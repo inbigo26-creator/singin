@@ -1,0 +1,6 @@
+{
+  "name": "교직원 연수 전자서명 및 서명부 관리",
+  "description": "학교 교직원 연수 참석 온라인 전자서명 및 A4 1장 최적화 서명부 인쇄 관리 시스템",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
