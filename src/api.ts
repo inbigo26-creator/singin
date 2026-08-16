@@ -73,6 +73,29 @@ export function parseTrainingDateTimestamp(dateStr: string | undefined): number 
   return isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
 }
 
+// Helper: Compare staff by teacher number (code/order ascending)
+export function compareStaffNumber(
+  a: { code?: string; order?: number; name?: string },
+  b: { code?: string; order?: number; name?: string }
+): number {
+  const numA = a.code ? parseInt(a.code.replace(/\D/g, ''), 10) : NaN;
+  const numB = b.code ? parseInt(b.code.replace(/\D/g, ''), 10) : NaN;
+
+  if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+    return numA - numB;
+  }
+  if (a.code && b.code && a.code !== b.code) {
+    return a.code.localeCompare(b.code, 'ko-KR', { numeric: true });
+  }
+  if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+    return a.order - b.order;
+  }
+  if (a.name && b.name) {
+    return a.name.localeCompare(b.name, 'ko-KR');
+  }
+  return 0;
+}
+
 // ==================== TRAININGS API ====================
 
 export async function fetchTrainings(): Promise<Training[]> {
@@ -125,9 +148,10 @@ export async function fetchTraining(id: string): Promise<{
     if (training.targetStaffIds && training.targetStaffIds.length > 0) {
       targetStaff = training.targetStaffIds
         .map((tid) => allStaff.find((s) => s.id === tid))
-        .filter((s): s is Staff => !!s);
+        .filter((s): s is Staff => !!s)
+        .sort((a, b) => compareStaffNumber(a, b));
     } else {
-      targetStaff = allStaff;
+      targetStaff = [...allStaff].sort((a, b) => compareStaffNumber(a, b));
     }
 
     return { training, attendances, targetStaff };
@@ -338,7 +362,7 @@ export async function fetchStaff(): Promise<Staff[]> {
       staffList.push({ ...(d.data() as Staff), id: d.id });
     });
 
-    return staffList.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    return staffList.sort((a, b) => compareStaffNumber(a, b));
   } catch (err) {
     console.error('fetchStaff error:', err);
     return defaultSampleStaff;

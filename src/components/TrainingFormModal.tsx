@@ -429,7 +429,7 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
                       서명 대상 교직원: <span className="text-[#1a5b6d] font-black">{selectedStaffIds.length}명</span> 지정됨
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      선생님이 로그인하면 지정된 연수만 조회되며, 인쇄시 선택된 인원만 순서대로 출력됩니다.
+                      선생님이 로그인하면 지정된 연수만 조회되며, 인쇄 시 선생님 번호 순서대로 자동 정렬되어 출력됩니다.
                     </p>
                   </div>
                 </div>
@@ -465,7 +465,7 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
                     총 {allStaff.length}명 중 <span className="text-[#1a5b6d]">{selectedStaffIds.length}명</span> 서명 대상 지정됨
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    * 선택된 순서대로 인쇄 서명부에 번호(연번)가 매겨집니다.
+                    * 인쇄 서명부에는 선생님 번호(오름차순) 순서대로 자동 정렬되어 출력됩니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Training, Attendance, PrintSettings } from '../types';
 import { PrintRegisterDocument } from './PrintRegisterDocument';
-import { updateTrainingNotes } from '../api';
+import { updateTrainingNotes, compareStaffNumber } from '../api';
 
 interface PrintRegisterModalProps {
   isOpen: boolean;
@@ -70,8 +70,17 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
   };
 
   const handleExportCSV = () => {
+    const sortedAttendances = [...attendances].sort((a, b) => {
+      const staffA = targetStaff.find((s) => (a.staffId && s.id === a.staffId) || s.name.trim() === a.name.trim());
+      const staffB = targetStaff.find((s) => (b.staffId && s.id === b.staffId) || s.name.trim() === b.name.trim());
+      return compareStaffNumber(
+        { code: staffA?.code, order: staffA?.order, name: a.name },
+        { code: staffB?.code, order: staffB?.order, name: b.name }
+      );
+    });
+
     const headers = ['연번', '성명', '소속/부서', '서명등록일시', '비고'];
-    const rows = attendances.map((a, i) => [
+    const rows = sortedAttendances.map((a, i) => [
       i + 1,
       `"${a.name.replace(/"/g, '""')}"`,
       `"${(a.department || '').replace(/"/g, '""')}"`,

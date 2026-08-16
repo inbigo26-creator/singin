@@ -1,5 +1,6 @@
 import React from 'react';
 import { Training, Attendance, PrintSettings } from '../types';
+import { compareStaffNumber } from '../api';
 
 interface PrintRegisterDocumentProps {
   training: Training;
@@ -17,6 +18,8 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   // Build items to print
   interface PrintableItem {
     id: string;
+    code?: string;
+    order?: number;
     name: string;
     department?: string;
     signature?: string;
@@ -30,7 +33,6 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   const trainingNotes = training.notes || {};
 
   if (printAllTargetStaff && targetStaff.length > 0) {
-    // Show only the admin-selected designated teachers in their exact designated order
     displayItems = targetStaff.map((staff) => {
       const match = attendances.find(
         (a) => (a.staffId && a.staffId === staff.id) || a.name.trim() === staff.name.trim()
@@ -38,6 +40,8 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
       const note = trainingNotes[staff.id] || trainingNotes[staff.name] || match?.note || '';
       return {
         id: staff.id,
+        code: staff.code,
+        order: staff.order,
         name: staff.name,
         department: staff.department,
         signature: match?.signature,
@@ -55,6 +59,7 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
         const note = trainingNotes[att.id] || (att.staffId && trainingNotes[att.staffId]) || trainingNotes[att.name] || att.note || '';
         displayItems.push({
           id: att.id,
+          code: undefined,
           name: att.name,
           department: att.department,
           signature: att.signature,
@@ -66,9 +71,12 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   } else {
     // Show only attendees who actually signed
     displayItems = attendances.map((a) => {
+      const staffMatch = targetStaff.find((s) => (a.staffId && s.id === a.staffId) || s.name.trim() === a.name.trim());
       const note = trainingNotes[a.id] || (a.staffId && trainingNotes[a.staffId]) || trainingNotes[a.name] || a.note || '';
       return {
         id: a.id,
+        code: staffMatch?.code,
+        order: staffMatch?.order,
         name: a.name,
         department: a.department,
         signature: a.signature,
@@ -77,6 +85,9 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
       };
     });
   }
+
+  // Always sort ascending by teacher number (code/order)
+  displayItems.sort((a, b) => compareStaffNumber(a, b));
 
   const totalCount = displayItems.length;
 

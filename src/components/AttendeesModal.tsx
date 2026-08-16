@@ -11,7 +11,7 @@ import {
   Check
 } from 'lucide-react';
 import { Training, Attendance } from '../types';
-import { deleteAttendance, seedBulkAttendees, clearAllAttendances, updateTrainingNotes } from '../api';
+import { deleteAttendance, seedBulkAttendees, clearAllAttendances, updateTrainingNotes, compareStaffNumber } from '../api';
 
 interface AttendeesModalProps {
   isOpen: boolean;
@@ -116,6 +116,9 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
       };
     });
   }
+
+  // Sort by teacher number (code/order) ascending
+  combinedRows.sort((a, b) => compareStaffNumber(a, b));
 
   const signedCount = combinedRows.filter((r) => r.isSigned).length;
   const totalCount = combinedRows.length;
