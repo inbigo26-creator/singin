@@ -155,16 +155,18 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     setSelectedStaffIds([]);
   };
 
-  // Group departments: all up to '행정계장', and group the rest into '기타'
+  // Group departments: all before '행정계장', and group from '행정계장' onwards into '기타'
   const allDepartments: string[] = Array.from(new Set(allStaff.map((s) => s.department).filter(Boolean)));
-  const adminChiefIndex = allDepartments.findIndex((d) => d === '행정계장' || d.includes('행정계장'));
+  const adminChiefIndex = allDepartments.findIndex((d) => 
+    d === '행정계장' || d.includes('행정계장') || d === '주무관' || d === '실무사' || d === '조리' || d === '시설' || d === '당직' || d === '배움터지킴이'
+  );
 
   let primaryDepartments: string[] = [];
   let etcDepartments: string[] = [];
 
   if (adminChiefIndex !== -1) {
-    primaryDepartments = allDepartments.slice(0, adminChiefIndex + 1);
-    etcDepartments = allDepartments.slice(adminChiefIndex + 1);
+    primaryDepartments = allDepartments.slice(0, adminChiefIndex);
+    etcDepartments = allDepartments.slice(adminChiefIndex);
   } else {
     primaryDepartments = allDepartments;
     etcDepartments = [];

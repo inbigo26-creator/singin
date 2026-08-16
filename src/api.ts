@@ -388,6 +388,16 @@ export async function deleteStaff(id: string): Promise<{ success: boolean; messa
   return { success: true, message: '교직원이 삭제되었습니다.' };
 }
 
+export async function batchDeleteStaff(ids: string[]): Promise<{ success: boolean; message: string }> {
+  if (!ids || ids.length === 0) return { success: true, message: '삭제할 교직원이 없습니다.' };
+  const batch = writeBatch(db);
+  ids.forEach((id) => {
+    batch.delete(doc(db, STAFF_COL, id));
+  });
+  await batch.commit();
+  return { success: true, message: `${ids.length}명의 교직원이 삭제되었습니다.` };
+}
+
 export async function bulkImportStaff(
   staffList: Partial<Staff>[],
   mode: 'replace' | 'append' = 'append'
