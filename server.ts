@@ -19,6 +19,7 @@ interface DatabaseSchema {
   trainings: Training[];
   attendances: Attendance[];
   config: SchoolConfig;
+  adminPassword?: string;
 }
 
 const defaultSampleStaff: Staff[] = [
@@ -213,10 +214,28 @@ async function startServer() {
   // Admin Verification
   app.post('/api/admin/verify', (req: Request, res: Response) => {
     const { password } = req.body;
-    if (password === ADMIN_PASSWORD) {
+    const db = getDatabase();
+    const currentAdminPassword = db.adminPassword || ADMIN_PASSWORD;
+    if (password === currentAdminPassword) {
       return res.json({ success: true, message: '인증 성공' });
     }
     return res.status(401).json({ success: false, message: '비밀번호가 일치하지 않습니다.' });
+  });
+
+  // Admin Change Password
+  app.post('/api/admin/change-password', (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length === 0) {
+      return res.status(400).json({ success: false, message: '새 비밀번호를 입력해 주세요.' });
+    }
+    const db = getDatabase();
+    const currentAdminPassword = db.adminPassword || ADMIN_PASSWORD;
+    if (currentPassword !== currentAdminPassword) {
+      return res.status(401).json({ success: false, message: '현재 비밀번호가 일치하지 않습니다.' });
+    }
+    db.adminPassword = newPassword.trim();
+    saveDatabase(db);
+    return res.json({ success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' });
   });
 
   // Get School Config

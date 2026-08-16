@@ -35,6 +35,7 @@ export interface LocalDatabaseSchema {
   staff: Staff[];
   trainings: Training[];
   attendances: Attendance[];
+  adminPassword?: string;
 }
 
 const initialLocalData: LocalDatabaseSchema = {

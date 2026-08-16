@@ -364,7 +364,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </div>
                 <p className="text-xs text-slate-500">
                   {candidates.length > 1
-                    ? `동명이인 구분을 위해 본인의 고유번호, 소속 부서, 직급을 확인 후 선택해 주세요.`
+                    ? `동명이인 구분을 위해 본인의 소속 부서, 직급 등을 확인 후 선택해 주세요.`
                     : `검색된 교직원 정보가 본인이 맞는지 확인 후 선택해 주세요.`}
                 </p>
               </div>
@@ -432,7 +432,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               </div>
 
               <p className="text-xs text-slate-400">
-                성명을 입력한 뒤 번호, 직급, 성명을 확인하고 본인을 선택해주세요.
+                성명을 입력한 뒤 부서, 성명을 확인하고 본인을 선택해주세요.
               </p>
 
               <div className="pt-2">
@@ -498,7 +498,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-slate-600">
-                아래 영역에 이름을 정자로 쓰거나 서명해 주세요.
+                아래 영역에 이름을 정자로 작성해주세요.
               </span>
               <button
                 type="button"

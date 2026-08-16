@@ -15,6 +15,7 @@ import { AttendeesModal } from './components/AttendeesModal';
 import { QRModal } from './components/QRModal';
 import { PrintRegisterModal } from './components/PrintRegisterModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { AdminChangePasswordModal } from './components/AdminChangePasswordModal';
 import { AlertCircle } from 'lucide-react';
 
 export default function App() {
@@ -45,6 +46,7 @@ export default function App() {
 
   // Modals state
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [trainingToEdit, setTrainingToEdit] = useState<Training | null>(null);
@@ -240,6 +242,7 @@ export default function App() {
         isAdminAuthenticated={isAdminAuthenticated}
         onSwitchToAdmin={handleRequestAdminMode}
         onSwitchToSign={() => handleNavigateToSign()}
+        onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
         onLogoutAdmin={handleAdminLogout}
       />
 
@@ -348,6 +351,12 @@ export default function App() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         onSuccess={handleAdminLoginSuccess}
+      />
+
+      {/* Admin Change Password Modal */}
+      <AdminChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
       />
     </div>
   );

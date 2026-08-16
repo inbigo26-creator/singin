@@ -327,7 +327,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="성명 (예: 김민지)"
+                  placeholder="성명 (예: 김인비)"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
@@ -341,7 +341,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 />
                 <input
                   type="text"
-                  placeholder="직급 (예: 교사, 부장)"
+                  placeholder="직급 (예: 교사 등)"
                   value={posInput}
                   onChange={(e) => setPosInput(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"

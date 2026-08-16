@@ -1,5 +1,5 @@
 import React from 'react';
-import { PenTool, Shield, LogOut } from 'lucide-react';
+import { PenTool, Shield, LogOut, KeyRound } from 'lucide-react';
 
 interface NavbarProps {
   currentView: 'admin' | 'sign';
@@ -8,6 +8,7 @@ interface NavbarProps {
   onSwitchToAdmin: () => void;
   onSwitchToSign: () => void;
   onOpenSettings?: () => void;
+  onOpenChangePassword?: () => void;
   onLogoutAdmin?: () => void;
 }
 
@@ -17,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isAdminAuthenticated,
   onSwitchToAdmin,
   onSwitchToSign,
+  onOpenChangePassword,
   onLogoutAdmin,
 }) => {
   return (
@@ -37,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right Navigation */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={onSwitchToSign}
@@ -47,6 +49,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>선생님 서명 화면</span>
           </button>
 
+          {isAdminAuthenticated && onOpenChangePassword && (
+            <button
+              type="button"
+              onClick={onOpenChangePassword}
+              className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="관리자 비밀번호 변경"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">비밀번호 변경</span>
+            </button>
+          )}
+
           {isAdminAuthenticated && onLogoutAdmin && (
             <button
               type="button"
@@ -55,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="관리자 로그아웃"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>로그아웃</span>
+              <span className="hidden sm:inline">로그아웃</span>
             </button>
           )}
         </div>
@@ -63,3 +77,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+

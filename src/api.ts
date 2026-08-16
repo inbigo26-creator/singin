@@ -789,16 +789,49 @@ export async function verifyAdminPassword(password: string): Promise<{ success: 
       body: JSON.stringify({ password }),
     });
     return await handleResponse(res, () => {
-      if (password === '1234') {
+      const db = getLocalDB();
+      const expectedPassword = db.adminPassword || '1234';
+      if (password === expectedPassword) {
         return { success: true, message: '인증 성공' };
       }
       throw new Error('비밀번호가 일치하지 않습니다.');
     });
-  } catch (err) {
-    if (password === '1234') {
+  } catch (err: any) {
+    const db = getLocalDB();
+    const expectedPassword = db.adminPassword || '1234';
+    if (password === expectedPassword) {
       return { success: true, message: '인증 성공' };
     }
-    throw new Error('비밀번호가 일치하지 않습니다.');
+    throw new Error(err.message || '비밀번호가 일치하지 않습니다.');
+  }
+}
+
+export async function changeAdminPassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return await handleResponse(res, () => {
+      const db = getLocalDB();
+      const expectedPassword = db.adminPassword || '1234';
+      if (currentPassword !== expectedPassword) {
+        throw new Error('현재 비밀번호가 일치하지 않습니다.');
+      }
+      db.adminPassword = newPassword.trim();
+      saveLocalDB(db);
+      return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
+    });
+  } catch (err: any) {
+    const db = getLocalDB();
+    const expectedPassword = db.adminPassword || '1234';
+    if (currentPassword !== expectedPassword) {
+      throw new Error('현재 비밀번호가 일치하지 않습니다.');
+    }
+    db.adminPassword = newPassword.trim();
+    saveLocalDB(db);
+    return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
   }
 }
 
