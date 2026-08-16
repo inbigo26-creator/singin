@@ -38,7 +38,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState('');
   const [nameInput, setNameInput] = useState('');
-  const [deptInput, setDeptInput] = useState('1학년부');
+  const [deptInput, setDeptInput] = useState('');
   const [posInput, setPosInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -172,14 +172,20 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
       setFormError(null);
       if (editingStaffId) {
         await updateStaff(editingStaffId, {
-          code: codeInput.trim() || undefined,
           name: nameInput.trim(),
           department: deptInput.trim(),
           position: posInput.trim() || undefined,
         });
       } else {
+        // Auto-assign sequential number
+        const maxNumericCode = staffList.reduce((max, s) => {
+          const num = parseInt(s.code || '', 10);
+          return !isNaN(num) && num > max ? num : max;
+        }, 0);
+        const autoCode = maxNumericCode > 0 ? String(maxNumericCode + 1) : String(staffList.length + 1);
+
         await createStaff({
-          code: codeInput.trim() || undefined,
+          code: autoCode,
           name: nameInput.trim(),
           department: deptInput.trim(),
           position: posInput.trim() || undefined,
@@ -188,6 +194,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
 
       setCodeInput('');
       setNameInput('');
+      setDeptInput('');
       setPosInput('');
       setEditingStaffId(null);
       await loadStaff();
@@ -209,6 +216,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
     setEditingStaffId(null);
     setCodeInput('');
     setNameInput('');
+    setDeptInput('');
     setPosInput('');
   };
 
@@ -333,7 +341,10 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
               onClick={() => {
                 setIsBulkOpen(false);
                 setEditingStaffId(null);
+                setCodeInput('');
                 setNameInput('');
+                setDeptInput('');
+                setPosInput('');
               }}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 !isBulkOpen
@@ -391,14 +402,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 </div>
               )}
 
-              <form onSubmit={handleSaveStaff} className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-                <input
-                  type="text"
-                  placeholder="고유번호 (예: 101)"
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-mono text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
-                />
+              <form onSubmit={handleSaveStaff} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <input
                   type="text"
                   required
@@ -409,14 +413,14 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 />
                 <input
                   type="text"
-                  placeholder="부서/학년 (예: 1학년부)"
+                  placeholder="부서/학년 (예: 1학년부, 교무부 등)"
                   value={deptInput}
                   onChange={(e) => setDeptInput(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
                 />
                 <input
                   type="text"
-                  placeholder="직급 (예: 교사 등 - 미입력 가능)"
+                  placeholder="직급 (예: 교사 - 미입력 가능)"
                   value={posInput}
                   onChange={(e) => setPosInput(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
