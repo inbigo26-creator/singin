@@ -46,6 +46,33 @@ async function ensureInitialStaffSeeded() {
   }
 }
 
+// Helper: Parse training date string to timestamp for chronological sorting (earliest date first)
+export function parseTrainingDateTimestamp(dateStr: string | undefined): number {
+  if (!dateStr || !dateStr.trim()) return Number.MAX_SAFE_INTEGER;
+  const cleaned = dateStr.trim();
+  const digits = cleaned.match(/\d+/g);
+  if (digits && digits.length >= 3) {
+    let year = parseInt(digits[0], 10);
+    if (year < 100) year += 2000;
+    const month = parseInt(digits[1], 10) - 1;
+    const day = parseInt(digits[2], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) {
+      return d.getTime();
+    }
+  } else if (digits && digits.length === 2) {
+    let year = parseInt(digits[0], 10);
+    if (year < 100) year += 2000;
+    const month = parseInt(digits[1], 10) - 1;
+    const d = new Date(year, month, 1);
+    if (!isNaN(d.getTime())) {
+      return d.getTime();
+    }
+  }
+  const parsed = Date.parse(cleaned);
+  return isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+}
+
 // ==================== TRAININGS API ====================
 
 export async function fetchTrainings(): Promise<Training[]> {
@@ -57,9 +84,14 @@ export async function fetchTrainings(): Promise<Training[]> {
       trainings.push({ ...(d.data() as Training), id: d.id });
     });
 
-    return trainings.sort(
-      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-    );
+    return trainings.sort((a, b) => {
+      const timeA = parseTrainingDateTimestamp(a.date);
+      const timeB = parseTrainingDateTimestamp(b.date);
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
+    });
   } catch (err) {
     console.error('fetchTrainings error:', err);
     return [];
@@ -482,7 +514,7 @@ export async function fetchTeacherTrainings(
       id: staffId || `stf-temp-${Date.now()}`,
       name: name || '선생님',
       department: '교무부',
-      position: '교사',
+      position: '',
     };
   }
 
@@ -491,10 +523,19 @@ export async function fetchTeacherTrainings(
   const allAttendances: Attendance[] = [];
   attSnap.forEach((d) => allAttendances.push({ ...(d.data() as Attendance), id: d.id }));
 
-  const assignedTrainings = allTrainings.filter((t) => {
-    if (!t.targetStaffIds || t.targetStaffIds.length === 0) return true;
-    return t.targetStaffIds.includes(teacher!.id);
-  });
+  const assignedTrainings = allTrainings
+    .filter((t) => {
+      if (!t.targetStaffIds || t.targetStaffIds.length === 0) return true;
+      return t.targetStaffIds.includes(teacher!.id);
+    })
+    .sort((a, b) => {
+      const timeA = parseTrainingDateTimestamp(a.date);
+      const timeB = parseTrainingDateTimestamp(b.date);
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
+    });
 
   const items: TeacherTrainingItem[] = assignedTrainings.map((t) => {
     const attendance =

@@ -300,7 +300,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         staffId: currentTeacher.id,
         name: currentTeacher.name,
         department: currentTeacher.department || '',
-        position: currentTeacher.position || '교사',
+        position: currentTeacher.position || undefined,
         signature: signatureDataUrl,
       });
 

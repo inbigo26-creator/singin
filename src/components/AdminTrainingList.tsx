@@ -13,6 +13,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { Training } from '../types';
+import { parseTrainingDateTimestamp } from '../api';
 
 interface AdminTrainingListProps {
   trainings: Training[];
@@ -40,12 +41,21 @@ export const AdminTrainingList: React.FC<AdminTrainingListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const filteredTrainings = trainings.filter(
-    (t) =>
-      t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.location && t.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.manager && t.manager.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredTrainings = trainings
+    .filter(
+      (t) =>
+        t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.location && t.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (t.manager && t.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort((a, b) => {
+      const timeA = parseTrainingDateTimestamp(a.date);
+      const timeB = parseTrainingDateTimestamp(b.date);
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
+    });
 
   const handleCopyLink = (trainingId: string) => {
     const url = `${window.location.origin}${window.location.pathname}?sign=${trainingId}`;

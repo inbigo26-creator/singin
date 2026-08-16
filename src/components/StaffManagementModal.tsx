@@ -39,7 +39,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
   const [codeInput, setCodeInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [deptInput, setDeptInput] = useState('1학년부');
-  const [posInput, setPosInput] = useState('교사');
+  const [posInput, setPosInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   // Bulk Import Mode
@@ -175,19 +175,20 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
           code: codeInput.trim() || undefined,
           name: nameInput.trim(),
           department: deptInput.trim(),
-          position: posInput.trim(),
+          position: posInput.trim() || undefined,
         });
       } else {
         await createStaff({
           code: codeInput.trim() || undefined,
           name: nameInput.trim(),
           department: deptInput.trim(),
-          position: posInput.trim(),
+          position: posInput.trim() || undefined,
         });
       }
 
       setCodeInput('');
       setNameInput('');
+      setPosInput('');
       setEditingStaffId(null);
       await loadStaff();
     } catch (err: any) {
@@ -200,7 +201,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
     setCodeInput(staff.code || '');
     setNameInput(staff.name);
     setDeptInput(staff.department);
-    setPosInput(staff.position || '교사');
+    setPosInput(staff.position || '');
     setIsBulkOpen(false);
   };
 
@@ -208,6 +209,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
     setEditingStaffId(null);
     setCodeInput('');
     setNameInput('');
+    setPosInput('');
   };
 
   const handleDeleteStaff = async (id: string, name: string) => {
@@ -238,7 +240,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
         let code = '';
         let dept = '교무부';
         let name = '';
-        let pos = '교사';
+        let pos = '';
 
         // Check if first token is numeric or contains digits (code)
         if (parts.length === 1) {
@@ -278,7 +280,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
           code = String(100 + idx + 1);
         }
 
-        return { code, name, department: dept, position: pos };
+        return { code, name, department: dept, position: pos || undefined };
       });
 
       if (parsedStaff.length === 0) {
@@ -414,7 +416,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 />
                 <input
                   type="text"
-                  placeholder="직급 (예: 교사 등)"
+                  placeholder="직급 (예: 교사 등 - 미입력 가능)"
                   value={posInput}
                   onChange={(e) => setPosInput(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
@@ -476,12 +478,12 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
               )}
 
               <p className="text-[11px] text-slate-400">
-                줄마다 <strong>‘고유번호 부서 성명 직급’</strong> 또는 <strong>‘부서 성명’</strong> 형식으로 붙여넣으세요. (예: 106 1학년부 김민지 교사)
+                줄마다 <strong>‘고유번호 부서 성명’</strong> 또는 <strong>‘부서 성명’</strong> 형식으로 붙여넣으세요. (예: 106 1학년부 김민지)
               </p>
 
               <textarea
                 rows={5}
-                placeholder={`101 교육과정연구부 김진수 교사\n102 생활안전부 박미영 교사\n106 1학년부 김민지 교사`}
+                placeholder={`101 교육과정연구부 김진수\n102 생활안전부 박미영\n106 1학년부 김민지`}
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono text-slate-900 focus:outline-hidden focus:border-[#1a5b6d]"
@@ -618,6 +620,9 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                         <span className="text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
                           {staff.department}
                         </span>
+                        {staff.position && (
+                          <span className="text-slate-400">({staff.position})</span>
+                        )}
                         {isDuplicate && (
                           <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-medium">
                             동명이인
