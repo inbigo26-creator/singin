@@ -525,20 +525,18 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                   <div className="flex items-center gap-2 mb-1.5 bg-slate-50/90 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs">
                     <PenTool className="w-4 h-4 text-[#1a5b6d]" />
                     <span className="text-xs sm:text-sm font-bold text-slate-700">
-                      여기에 이름을 큼직하게 꽉 차게 적어주세요
+                      여기에 정자로 서명해주세요
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    (칸에 꽉 차도록 크게 작성하셔야 인쇄 시 선명하게 출력됩니다)
+                    (서명을 크게 해주시면 인쇄 시 선명하게 출력됩니다)
                   </p>
                 </div>
               )}
             </div>
 
             {/* Helpful Helper Text */}
-            <p className="text-center text-[11px] text-slate-500 mt-2">
-              ※ 사각 칸 안에 <strong>큼직하게 꽉 차게</strong> 성명을 작성해 주세요. (자동 여백 정리 및 고대비 보정이 적용됩니다.)
-            </p>
+            
           </div>
 
           {/* Submit Actions */}
