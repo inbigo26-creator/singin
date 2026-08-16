@@ -2,7 +2,7 @@
 
 @page {
   size: A4 portrait;
-  margin: 22mm 12mm 15mm 12mm;
+  margin: 8mm 8mm 8mm 8mm;
 }
 
 @media print {
@@ -11,26 +11,36 @@
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
+    height: 100% !important;
+    overflow: hidden !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  header, nav, button, input, .print-hidden {
-    display: none !important;
+  /* Hide everything on the page except the printable register sheet */
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-register-sheet,
+  #printable-register-sheet * {
+    visibility: visible;
   }
 
   #printable-register-sheet {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 auto !important;
-    padding-top: 10mm !important;
-    padding-bottom: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    margin: 0 !important;
+    padding: 2mm 0 0 0 !important;
     border: none !important;
     box-shadow: none !important;
+    background: #ffffff !important;
     page-break-inside: avoid !important;
     page-break-after: avoid !important;
+    page-break-before: avoid !important;
   }
 
   table {
@@ -41,3 +51,4 @@
     page-break-inside: avoid !important;
   }
 }
+

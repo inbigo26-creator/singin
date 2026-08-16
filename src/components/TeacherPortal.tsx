@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, PenTool, RotateCcw } from 'lucide-react';
 import { Staff, Training } from '../types';
+import { trimAndOptimizeSignature } from '../utils/signatureUtils';
 import {
   fetchTeacherTrainings,
   submitAttendance,
@@ -175,7 +176,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
 
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
@@ -183,8 +184,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     ctx.scale(dpr, dpr);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#000000'; // Deep solid black ink
+    ctx.lineWidth = 4.8; // Bold, distinct ink stroke
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, rect.width, rect.height);
@@ -234,7 +235,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#000000';
     ctx.fill();
 
     setIsCanvasDirty(true);
@@ -253,6 +254,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
     const currentPos = getCanvasPos(e);
 
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4.8;
     ctx.beginPath();
     ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
     ctx.lineTo(currentPos.x, currentPos.y);
@@ -290,7 +293,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
     try {
       setIsSubmittingSign(true);
-      const signatureDataUrl = canvas.toDataURL('image/png');
+      // Automatically trim extra whitespace so the signature fills the document cell tightly and boldly
+      const signatureDataUrl = trimAndOptimizeSignature(canvas);
 
       await submitAttendance(activeSigningTraining.id, {
         staffId: currentTeacher.id,
@@ -494,23 +498,25 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
           <hr className="border-slate-200" />
 
-          {/* Clean Canvas Header & Area */}
+          {/* Focused, Proportioned Signature Box */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-slate-600">
-                아래 영역에 이름을 정자로 작성해주세요.
+              <span className="text-xs font-semibold text-slate-700">
+                서명란 (성명 정자 작성)
               </span>
               <button
                 type="button"
                 onClick={handleClearCanvas}
-                className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                disabled={!isCanvasDirty}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:text-slate-500 underline cursor-pointer"
               >
-                다시 쓰기 (지우기)
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>다시 쓰기 (지우기)</span>
               </button>
             </div>
 
-            {/* Edge-to-Edge Canvas box */}
-            <div className="relative w-full h-72 sm:h-80 bg-white border border-slate-300 rounded-lg overflow-hidden cursor-crosshair touch-none">
+            {/* Compact & clearly bounded signature pad */}
+            <div className="relative w-full max-w-lg mx-auto h-48 sm:h-52 bg-white border-2 border-slate-700 rounded-xl overflow-hidden cursor-crosshair touch-none shadow-xs">
               <canvas
                 ref={canvasRef}
                 onMouseDown={handleStartDraw}
@@ -522,7 +528,27 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 onTouchEnd={handleEndDraw}
                 className="w-full h-full block bg-white"
               />
+
+              {/* Watermark & Guideline when empty */}
+              {!isCanvasDirty && (
+                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-400 select-none p-4 text-center">
+                  <div className="flex items-center gap-2 mb-1.5 bg-slate-50/90 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs">
+                    <PenTool className="w-4 h-4 text-[#1a5b6d]" />
+                    <span className="text-xs sm:text-sm font-bold text-slate-700">
+                      여기에 이름을 큼직하게 꽉 차게 적어주세요
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    (칸에 꽉 차도록 크게 작성하셔야 인쇄 시 선명하게 출력됩니다)
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Helpful Helper Text */}
+            <p className="text-center text-[11px] text-slate-500 mt-2">
+              ※ 사각 칸 안에 <strong>큼직하게 꽉 차게</strong> 성명을 작성해 주세요. (자동 여백 정리 및 고대비 보정이 적용됩니다.)
+            </p>
           </div>
 
           {/* Submit Actions */}

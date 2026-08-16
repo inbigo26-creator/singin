@@ -503,7 +503,7 @@ async function startServer() {
   // Update Training
   app.put('/api/trainings/:id', (req: Request, res: Response) => {
     const { id } = req.params;
-    const { title, date, location, target, manager, schoolName, memo, targetStaffIds } = req.body;
+    const { title, date, location, target, manager, schoolName, memo, notes, targetStaffIds } = req.body;
 
     const db = getDatabase();
     const index = db.trainings.findIndex((t) => t.id === id);
@@ -521,6 +521,7 @@ async function startServer() {
       manager: manager !== undefined ? manager.trim() : db.trainings[index].manager,
       schoolName: schoolName !== undefined ? schoolName.trim() : db.trainings[index].schoolName,
       memo: memo !== undefined ? memo.trim() : db.trainings[index].memo,
+      notes: notes !== undefined ? notes : db.trainings[index].notes,
       targetStaffIds: targetStaffIds !== undefined ? targetStaffIds : db.trainings[index].targetStaffIds,
       updatedAt: new Date().toISOString(),
     };
@@ -536,6 +537,28 @@ async function startServer() {
       attendanceCount: count,
       totalTargetCount: targetCount,
     });
+  });
+
+  // Update specific training notes (비고 일괄/개별 업데이트)
+  app.put('/api/trainings/:id/notes', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const db = getDatabase();
+    const index = db.trainings.findIndex((t) => t.id === id);
+
+    if (index === -1) {
+      return res.status(404).json({ error: '연수 정보를 찾을 수 없습니다.' });
+    }
+
+    db.trainings[index].notes = {
+      ...(db.trainings[index].notes || {}),
+      ...(notes || {}),
+    };
+    db.trainings[index].updatedAt = new Date().toISOString();
+
+    saveDatabase(db);
+    res.json({ success: true, notes: db.trainings[index].notes });
   });
 
   // Delete Training

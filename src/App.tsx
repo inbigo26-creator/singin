@@ -343,6 +343,7 @@ export default function App() {
           onClose={() => setIsPrintModalOpen(false)}
           training={selectedTrainingForPrint}
           attendances={attendancesForPrint}
+          onRefresh={loadInitialData}
         />
       )}
 

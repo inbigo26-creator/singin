@@ -16,6 +16,7 @@ export interface Training {
   manager?: string;
   schoolName?: string;
   memo?: string;
+  notes?: Record<string, string>; // Mapping staffId/name to note (비고)
   targetStaffIds?: string[]; // IDs of assigned teachers (if empty or undefined, all teachers)
   targetStaff?: Staff[];
   createdAt: string;
@@ -33,6 +34,7 @@ export interface Attendance {
   position?: string;
   signature: string; // base64 PNG data URL or SVG
   signedAt: string;
+  note?: string; // 비고
   deviceInfo?: string;
 }
 

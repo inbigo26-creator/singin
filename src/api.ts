@@ -159,6 +159,42 @@ export async function updateTraining(id: string, data: Partial<Training>): Promi
   }
 }
 
+export async function updateTrainingNotes(
+  trainingId: string,
+  notes: Record<string, string>
+): Promise<{ success: boolean; notes: Record<string, string> }> {
+  try {
+    const res = await fetch(`${API_BASE}/trainings/${trainingId}/notes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    return await handleResponse(res, () => {
+      const db = getLocalDB();
+      const idx = db.trainings.findIndex((t) => t.id === trainingId);
+      if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
+      db.trainings[idx].notes = {
+        ...(db.trainings[idx].notes || {}),
+        ...notes,
+      };
+      db.trainings[idx].updatedAt = new Date().toISOString();
+      saveLocalDB(db);
+      return { success: true, notes: db.trainings[idx].notes || {} };
+    });
+  } catch (err) {
+    const db = getLocalDB();
+    const idx = db.trainings.findIndex((t) => t.id === trainingId);
+    if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
+    db.trainings[idx].notes = {
+      ...(db.trainings[idx].notes || {}),
+      ...notes,
+    };
+    db.trainings[idx].updatedAt = new Date().toISOString();
+    saveLocalDB(db);
+    return { success: true, notes: db.trainings[idx].notes || {} };
+  }
+}
+
 export async function deleteTraining(id: string): Promise<{ success: boolean; message: string }> {
   try {
     const res = await fetch(`${API_BASE}/trainings/${id}`, {

@@ -6,10 +6,12 @@ import {
   Search,
   CheckCircle2,
   Sparkles,
-  Maximize2
+  Maximize2,
+  Edit3,
+  Check
 } from 'lucide-react';
 import { Training, Attendance } from '../types';
-import { deleteAttendance, seedBulkAttendees, clearAllAttendances } from '../api';
+import { deleteAttendance, seedBulkAttendees, clearAllAttendances, updateTrainingNotes } from '../api';
 
 interface AttendeesModalProps {
   isOpen: boolean;
@@ -33,6 +35,9 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [previewSignature, setPreviewSignature] = useState<{ name: string; url: string } | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteInputValue, setNoteInputValue] = useState('');
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>(training.notes || {});
 
   if (!isOpen) return null;
 
@@ -50,6 +55,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
     signature?: string;
     signedAt?: string;
     isSigned: boolean;
+    note?: string;
   }
 
   let combinedRows: StaffAttendanceRow[] = [];
@@ -59,6 +65,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
       const match = attendances.find(
         (a) => (a.staffId && a.staffId === staff.id) || a.name.trim() === staff.name.trim()
       );
+      const note = localNotes[staff.id] || localNotes[staff.name] || match?.note || '';
       return {
         id: staff.id,
         code: staff.code,
@@ -70,6 +77,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
         signature: match?.signature,
         signedAt: match?.signedAt,
         isSigned: !!match,
+        note,
       };
     });
 
@@ -78,6 +86,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
         (r) => (att.staffId && r.staffId === att.staffId) || r.name.trim() === att.name.trim()
       );
       if (!alreadyIn) {
+        const note = localNotes[att.id] || (att.staffId && localNotes[att.staffId]) || localNotes[att.name] || att.note || '';
         combinedRows.push({
           id: att.id,
           attendanceId: att.id,
@@ -87,20 +96,25 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
           signature: att.signature,
           signedAt: att.signedAt,
           isSigned: true,
+          note,
         });
       }
     });
   } else {
-    combinedRows = attendances.map((att) => ({
-      id: att.id,
-      attendanceId: att.id,
-      name: att.name,
-      department: att.department || '교직원',
-      position: att.position || '교사',
-      signature: att.signature,
-      signedAt: att.signedAt,
-      isSigned: true,
-    }));
+    combinedRows = attendances.map((att) => {
+      const note = localNotes[att.id] || (att.staffId && localNotes[att.staffId]) || localNotes[att.name] || att.note || '';
+      return {
+        id: att.id,
+        attendanceId: att.id,
+        name: att.name,
+        department: att.department || '교직원',
+        position: att.position || '교사',
+        signature: att.signature,
+        signedAt: att.signedAt,
+        isSigned: true,
+        note,
+      };
+    });
   }
 
   const signedCount = combinedRows.filter((r) => r.isSigned).length;
@@ -118,6 +132,20 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
     if (filterMode === 'unsigned') return !row.isSigned;
     return true;
   });
+
+  const handleSaveNote = async (id: string, newNote: string) => {
+    const updated = { ...localNotes, [id]: newNote.trim() };
+    setLocalNotes(updated);
+    setEditingNoteId(null);
+    try {
+      await updateTrainingNotes(training.id, updated);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    }
+  };
+
+  const NOTE_PRESETS = ['출장', '연가', '병가', '연수', '육아휴직', '대리참석'];
 
   const handleDelete = async (attendanceId: string, name: string) => {
     if (!window.confirm(`${name} 선생님의 서명 기록을 삭제하시겠습니까?`)) {
@@ -331,7 +359,72 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
                 </div>
 
                 {/* Right Status & Actions */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  {/* Note (비고) badge or editor */}
+                  <div className="relative">
+                    {editingNoteId === row.id ? (
+                      <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-1 shadow-sm">
+                        <input
+                          type="text"
+                          value={noteInputValue}
+                          onChange={(e) => setNoteInputValue(e.target.value)}
+                          placeholder="비고 입력 (예: 출장)"
+                          className="w-24 px-1.5 py-0.5 text-[11px] border border-slate-200 rounded focus:outline-none focus:border-[#1a5b6d]"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveNote(row.id, noteInputValue);
+                            if (e.key === 'Escape') setEditingNoteId(null);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveNote(row.id, noteInputValue)}
+                          className="p-1 bg-[#1a5b6d] text-white rounded hover:bg-[#144857] cursor-pointer"
+                          title="저장"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingNoteId(null)}
+                          className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                          title="취소"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        {row.note ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingNoteId(row.id);
+                              setNoteInputValue(row.note || '');
+                            }}
+                            className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 rounded font-medium text-[11px] hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1"
+                            title="비고 수정"
+                          >
+                            <span>비고: {row.note}</span>
+                            <Edit3 className="w-2.5 h-2.5 opacity-60" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingNoteId(row.id);
+                              setNoteInputValue('');
+                            }}
+                            className="px-1.5 py-0.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded text-[11px] transition-colors cursor-pointer"
+                            title="비고(사유/메모) 입력"
+                          >
+                            + 비고
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {row.isSigned ? (
                     <>
                       {row.signature ? (

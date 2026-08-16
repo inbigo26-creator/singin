@@ -105,7 +105,7 @@ export const AdminChangePasswordModal: React.FC<AdminChangePasswordModalProps> =
               autoFocus
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="현재 비밀번호 (초기: 1234)"
+              placeholder="현재 비밀번호 입력"
               className="w-full px-3 py-2 text-sm rounded-md border border-slate-300 focus:outline-hidden focus:border-[#1a5b6d] focus:ring-1 focus:ring-[#1a5b6d]"
             />
           </div>

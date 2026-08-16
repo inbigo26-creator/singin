@@ -7,16 +7,20 @@ import {
   Columns,
   SquareCheck,
   Building,
-  ChevronDown
+  ChevronDown,
+  Edit3,
+  Check
 } from 'lucide-react';
 import { Training, Attendance, PrintSettings } from '../types';
 import { PrintRegisterDocument } from './PrintRegisterDocument';
+import { updateTrainingNotes } from '../api';
 
 interface PrintRegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   training: Training;
   attendances: Attendance[];
+  onRefresh?: () => void;
 }
 
 export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
@@ -24,6 +28,7 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
   onClose,
   training,
   attendances,
+  onRefresh,
 }) => {
   const [settings, setSettings] = useState<PrintSettings>({
     layoutMode: 'auto',
@@ -36,20 +41,42 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
   });
 
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showNotesManager, setShowNotesManager] = useState(false);
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>(training.notes || {});
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
 
   if (!isOpen) return null;
+
+  const targetStaff = training.targetStaff || [];
+  const staffListForNotes = targetStaff.length > 0
+    ? targetStaff
+    : attendances.map((a) => ({ id: a.id, name: a.name, department: a.department || '교직원' }));
+
+  const handleSaveNote = async (id: string, noteText: string) => {
+    const updated = { ...localNotes, [id]: noteText.trim() };
+    setLocalNotes(updated);
+    setEditingStaffId(null);
+    try {
+      await updateTrainingNotes(training.id, updated);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
   };
 
   const handleExportCSV = () => {
-    const headers = ['연번', '성명', '소속/부서', '서명등록일시'];
+    const headers = ['연번', '성명', '소속/부서', '서명등록일시', '비고'];
     const rows = attendances.map((a, i) => [
       i + 1,
       `"${a.name.replace(/"/g, '""')}"`,
       `"${(a.department || '').replace(/"/g, '""')}"`,
       `"${new Date(a.signedAt).toLocaleString('ko-KR')}"`,
+      `"${(localNotes[a.id] || (a.staffId && localNotes[a.staffId]) || localNotes[a.name] || a.note || '').replace(/"/g, '""')}"`,
     ]);
 
     const csvContent =
@@ -65,6 +92,11 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const currentTraining = {
+    ...training,
+    notes: localNotes,
   };
 
   return (
@@ -83,11 +115,33 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Notes Manager Dropdown Toggle */}
+            <button
+              type="button"
+              id="print-notes-toggle"
+              onClick={() => {
+                setShowNotesManager(!showNotesManager);
+                if (showSettingsPanel) setShowSettingsPanel(false);
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showNotesManager
+                  ? 'bg-amber-50 border-amber-400 text-amber-900 font-bold'
+                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+              <span>비고 입력 ({Object.keys(localNotes).filter((k) => !!localNotes[k]).length})</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showNotesManager ? 'rotate-180' : ''}`} />
+            </button>
+
             {/* Settings Dropdown Toggle */}
             <button
               type="button"
               id="print-settings-toggle"
-              onClick={() => setShowSettingsPanel(!showSettingsPanel)}
+              onClick={() => {
+                setShowSettingsPanel(!showSettingsPanel);
+                if (showNotesManager) setShowNotesManager(false);
+              }}
               className={`px-3 py-1.5 text-xs font-medium rounded-md border flex items-center gap-1.5 transition-colors cursor-pointer ${
                 showSettingsPanel
                   ? 'bg-slate-100 border-slate-400 text-slate-900'
@@ -133,6 +187,90 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Collapsible Notes Editor Panel (Hidden in Print) */}
+        {showNotesManager && (
+          <div className="print:hidden bg-amber-50/70 border-b border-amber-200 p-4 shrink-0 max-h-64 overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-900">
+                  교직원별 비고(사유) 직접 입력
+                </span>
+                <span className="text-[11px] text-amber-700">
+                  (출장, 연가, 병가, 연수 등 입력 시 서명부 비고란에 실시간 반영됩니다)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNotesManager(false)}
+                className="text-xs text-amber-800 hover:underline cursor-pointer"
+              >
+                완료
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {staffListForNotes.map((staff, idx) => {
+                const currentNote = localNotes[staff.id] || localNotes[staff.name] || '';
+                const isEditing = editingStaffId === staff.id;
+
+                return (
+                  <div
+                    key={staff.id || idx}
+                    className="bg-white border border-amber-200 rounded-lg p-2 flex items-center justify-between gap-2 shadow-xs"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-900 text-xs truncate block">{staff.name}</span>
+                      <span className="text-[10px] text-slate-500 truncate block">{staff.department || '교직원'}</span>
+                    </div>
+
+                    {isEditing ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          placeholder="비고 입력"
+                          className="w-20 px-1.5 py-0.5 text-xs border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveNote(staff.id, editingNoteText);
+                            if (e.key === 'Escape') setEditingStaffId(null);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveNote(staff.id, editingNoteText)}
+                          className="p-1 bg-amber-600 text-white rounded hover:bg-amber-700 cursor-pointer"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingStaffId(staff.id);
+                            setEditingNoteText(currentNote);
+                          }}
+                          className={`px-2 py-0.5 text-xs rounded font-medium cursor-pointer transition-colors ${
+                            currentNote
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}
+                          title="클릭하여 비고 수정"
+                        >
+                          {currentNote || '+ 비고'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Collapsible Print Settings Bar (Hidden in Print) */}
         {showSettingsPanel && (
@@ -232,7 +370,7 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
         {/* Scrollable Document Preview Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/60 print:p-0 print:bg-white print:overflow-visible flex justify-center">
           <PrintRegisterDocument
-            training={training}
+            training={currentTraining}
             attendances={attendances}
             settings={settings}
           />
