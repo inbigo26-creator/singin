@@ -14,11 +14,13 @@ import {
 interface TeacherPortalProps {
   onSwitchToAdmin: () => void;
   targetTrainingId?: string | null;
+  schoolName?: string;
 }
 
 export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   onSwitchToAdmin,
   targetTrainingId,
+  schoolName,
 }) => {
   // Current specific training if loaded via direct link/QR
   const [directTraining, setDirectTraining] = useState<Training | null>(null);
@@ -316,11 +318,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
   // ==================== SCREEN 1: MINIMAL LOGIN (EXACT MATCH WITH USER DESIGN) ====================
   if (!currentTeacher) {
-    // Current training metadata to display on top of card
-    const displayTitle = directTraining ? directTraining.title : '2026학년도 교직원 역량강화 연수';
-    const displayDate = directTraining
-      ? `${directTraining.schoolName || '인천비즈니스고등학교'} 연수 · ${directTraining.date}`
-      : '2026학년도 교직원 연수 · 2026년 8월 20일(목)';
+    const currentSchoolName = schoolName || directTraining?.schoolName || '인천비즈니스고등학교';
 
     return (
       <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 flex flex-col">
@@ -343,12 +341,9 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
         {/* Card Container */}
         <div className="max-w-3xl w-full mx-auto bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs">
-          <h2 className="text-xl font-bold text-slate-900 mb-2">서명하기</h2>
-          <div className="text-base font-semibold text-slate-800 mb-1">
-            {displayTitle}
-          </div>
-          <div className="text-xs text-slate-500 mb-5">
-            {displayDate}
+          <h2 className="text-xl font-bold text-slate-900 mb-1">서명하기</h2>
+          <div className="text-sm font-medium text-slate-600 mb-5">
+            {currentSchoolName}
           </div>
 
           <hr className="border-slate-200 mb-6" />

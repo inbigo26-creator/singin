@@ -221,6 +221,7 @@ export default function App() {
     return (
       <>
         <TeacherPortal
+          schoolName={schoolConfig.schoolName}
           targetTrainingId={activeSignTrainingId}
           onSwitchToAdmin={handleRequestAdminMode}
         />
