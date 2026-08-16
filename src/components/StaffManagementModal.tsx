@@ -481,16 +481,13 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                           </span>
                         )}
                         <span className="font-bold text-slate-900">{staff.name}</span>
+                        <span className="text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
+                          {staff.department}
+                        </span>
                         {isDuplicate && (
                           <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-medium">
                             동명이인
                           </span>
-                        )}
-                        <span className="text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
-                          {staff.department}
-                        </span>
-                        {staff.position && (
-                          <span className="text-slate-400">({staff.position})</span>
                         )}
                       </div>
 

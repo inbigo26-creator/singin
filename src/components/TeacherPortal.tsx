@@ -391,11 +391,6 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                       <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                         소속: {staff.department}
                       </span>
-                      {staff.position && (
-                        <span className="text-xs text-slate-500">
-                          ({staff.position})
-                        </span>
-                      )}
                     </div>
 
                     <button

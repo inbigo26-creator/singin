@@ -346,9 +346,6 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
                       )}
                       <span className="font-bold text-slate-900 text-sm">{row.name}</span>
                       <span className="text-slate-500">{row.department}</span>
-                      {row.position && (
-                        <span className="text-slate-400 text-[11px]">({row.position})</span>
-                      )}
                     </div>
                     {row.signedAt && (
                       <div className="text-[11px] text-slate-400 mt-0.5">
