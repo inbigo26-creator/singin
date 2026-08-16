@@ -805,6 +805,125 @@ async function startServer() {
     });
   });
 
+  // ==================== BACKUP & RESTORE & SYNC API ====================
+
+  // Export Full Database
+  app.get('/api/backup/export', (req: Request, res: Response) => {
+    try {
+      const db = getDatabase();
+      res.json({
+        success: true,
+        data: db,
+        exportedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: '데이터 내보내기 실패: ' + err.message });
+    }
+  });
+
+  // Import Full Database (Restore)
+  app.post('/api/backup/import', (req: Request, res: Response) => {
+    try {
+      const { data } = req.body;
+      if (!data || typeof data !== 'object') {
+        return res.status(400).json({ error: '올바른 백업 데이터 형식이 아닙니다.' });
+      }
+
+      const currentDb = getDatabase();
+      const newDb: DatabaseSchema = {
+        config: data.config || currentDb.config,
+        staff: Array.isArray(data.staff) ? data.staff : currentDb.staff,
+        trainings: Array.isArray(data.trainings) ? data.trainings : currentDb.trainings,
+        attendances: Array.isArray(data.attendances) ? data.attendances : currentDb.attendances,
+        adminPassword: data.adminPassword || currentDb.adminPassword,
+      };
+
+      saveDatabase(newDb);
+
+      res.json({
+        success: true,
+        message: '데이터가 성공적으로 복원되었습니다.',
+        counts: {
+          staff: newDb.staff.length,
+          trainings: newDb.trainings.length,
+          attendances: newDb.attendances.length,
+        },
+        data: newDb,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: '데이터 복원 실패: ' + err.message });
+    }
+  });
+
+  // Sync Client Local Storage with Server Database (Merge)
+  app.post('/api/backup/sync', (req: Request, res: Response) => {
+    try {
+      const { clientData, mode } = req.body; // mode: 'merge' | 'overwrite_server' | 'get_server'
+      const currentDb = getDatabase();
+
+      if (!clientData || mode === 'get_server') {
+        return res.json({ success: true, data: currentDb, message: '서버 데이터를 가져왔습니다.' });
+      }
+
+      if (mode === 'overwrite_server') {
+        const newDb: DatabaseSchema = {
+          config: clientData.config || currentDb.config,
+          staff: Array.isArray(clientData.staff) ? clientData.staff : currentDb.staff,
+          trainings: Array.isArray(clientData.trainings) ? clientData.trainings : currentDb.trainings,
+          attendances: Array.isArray(clientData.attendances) ? clientData.attendances : currentDb.attendances,
+          adminPassword: clientData.adminPassword || currentDb.adminPassword,
+        };
+        saveDatabase(newDb);
+        return res.json({ success: true, data: newDb, message: '서버 데이터가 로컬 데이터로 덮어써졌습니다.' });
+      }
+
+      // Merge Mode (default): Combine staff, trainings, attendances preserving IDs
+      const staffMap = new Map<string, Staff>();
+      currentDb.staff.forEach((s) => staffMap.set(s.id, s));
+      if (Array.isArray(clientData.staff)) {
+        clientData.staff.forEach((s: Staff) => {
+          if (s && s.id) staffMap.set(s.id, s);
+        });
+      }
+
+      const trainingMap = new Map<string, Training>();
+      currentDb.trainings.forEach((t) => trainingMap.set(t.id, t));
+      if (Array.isArray(clientData.trainings)) {
+        clientData.trainings.forEach((t: Training) => {
+          if (t && t.id) trainingMap.set(t.id, t);
+        });
+      }
+
+      const attendanceMap = new Map<string, Attendance>();
+      currentDb.attendances.forEach((a) => attendanceMap.set(a.id, a));
+      if (Array.isArray(clientData.attendances)) {
+        clientData.attendances.forEach((a: Attendance) => {
+          if (a && a.id) attendanceMap.set(a.id, a);
+        });
+      }
+
+      const mergedDb: DatabaseSchema = {
+        config: clientData.config || currentDb.config,
+        staff: Array.from(staffMap.values()).sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
+        trainings: Array.from(trainingMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        ),
+        attendances: Array.from(attendanceMap.values()),
+        adminPassword: currentDb.adminPassword,
+      };
+
+      saveDatabase(mergedDb);
+
+      res.json({
+        success: true,
+        message: '서버와 로컬 데이터가 성공적으로 병합 동기화되었습니다.',
+        data: mergedDb,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: '동기화 실패: ' + err.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

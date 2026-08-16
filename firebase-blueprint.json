@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "Trainings": {
+      "title": "Trainings",
+      "description": "School staff training sessions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "trainingDate": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "target": { "type": "string" },
+        "location": { "type": "string" },
+        "instructor": { "type": "string" },
+        "manager": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isArchived": { "type": "boolean" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "trainingDate"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "School staff and faculty list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "department": { "type": "string" },
+        "position": { "type": "string" },
+        "order": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "Attendances": {
+      "title": "Attendances",
+      "description": "Attendance and digital signature records per training session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "trainingId": { "type": "string" },
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "department": { "type": "string" },
+        "role": { "type": "string" },
+        "signedAt": { "type": "string" },
+        "signatureData": { "type": "string" },
+        "status": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "trainingId", "staffId", "staffName", "signedAt", "signatureData"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "School configuration and admin password hash",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "adminPassword": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "trainings": { "schema": "Trainings", "description": "Training documents" },
+    "staff": { "schema": "Staff", "description": "Staff documents" },
+    "attendances": { "schema": "Attendances", "description": "Attendance documents" },
+    "config": { "schema": "Config", "description": "System configuration" }
+  }
+}

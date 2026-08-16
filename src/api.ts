@@ -1,19 +1,48 @@
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
+import { db } from './firebase';
 import { Training, Attendance, SchoolConfig, Staff } from './types';
-import { getLocalDB, saveLocalDB, defaultSampleStaff } from './localStore';
+import { defaultSampleStaff } from './localStore';
 
-const API_BASE = '/api';
+// Collection references
+const TRAININGS_COL = 'trainings';
+const STAFF_COL = 'staff';
+const ATTENDANCES_COL = 'attendances';
+const CONFIG_COL = 'config';
 
-// Helper to test if a response is valid JSON from backend API
-async function handleResponse<T>(res: Response, fallbackFn: () => T | Promise<T>): Promise<T> {
-  const contentType = res.headers.get('content-type') || '';
-  if (!res.ok || !contentType.includes('application/json')) {
-    // If backend returns 404, 502, or HTML (static SPA redirect), fall back to client localStorage
-    return fallbackFn();
-  }
+const DEFAULT_SCHOOL_CONFIG: SchoolConfig = {
+  schoolName: '인천비즈니스고등학교',
+  defaultApprovalLine: ['담당', '부장', '교감', '교장'],
+  showApprovalLine: false,
+};
+
+// Helper: Ensure initial seed data exists on Firestore if empty
+let isStaffSeeded = false;
+async function ensureInitialStaffSeeded() {
+  if (isStaffSeeded) return;
   try {
-    return await res.json();
-  } catch {
-    return fallbackFn();
+    const snap = await getDocs(collection(db, STAFF_COL));
+    if (snap.empty) {
+      const batch = writeBatch(db);
+      defaultSampleStaff.forEach((staff) => {
+        const ref = doc(db, STAFF_COL, staff.id);
+        batch.set(ref, staff);
+      });
+      await batch.commit();
+    }
+    isStaffSeeded = true;
+  } catch (err) {
+    console.error('Error seeding initial staff into Firestore:', err);
   }
 }
 
@@ -21,18 +50,19 @@ async function handleResponse<T>(res: Response, fallbackFn: () => T | Promise<T>
 
 export async function fetchTrainings(): Promise<Training[]> {
   try {
-    const res = await fetch(`${API_BASE}/trainings`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      return [...db.trainings].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+    await ensureInitialStaffSeeded();
+    const snap = await getDocs(collection(db, TRAININGS_COL));
+    const trainings: Training[] = [];
+    snap.forEach((d) => {
+      trainings.push({ ...(d.data() as Training), id: d.id });
     });
-  } catch (err) {
-    const db = getLocalDB();
-    return [...db.trainings].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+
+    return trainings.sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
+  } catch (err) {
+    console.error('fetchTrainings error:', err);
+    return [];
   }
 }
 
@@ -42,178 +72,106 @@ export async function fetchTraining(id: string): Promise<{
   targetStaff: Staff[];
 }> {
   try {
-    const res = await fetch(`${API_BASE}/trainings/${id}`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const training = db.trainings.find((t) => t.id === id);
-      if (!training) throw new Error('연수를 찾을 수 없습니다.');
-      const attendances = db.attendances.filter((a) => a.trainingId === id);
+    const docRef = doc(db, TRAININGS_COL, id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error('연수를 찾을 수 없습니다.');
+    }
+    const training = { ...(snap.data() as Training), id: snap.id };
 
-      let targetStaff: Staff[] = [];
-      if (training.targetStaffIds && training.targetStaffIds.length > 0) {
-        targetStaff = training.targetStaffIds
-          .map((id) => db.staff.find((s) => s.id === id))
-          .filter((s): s is Staff => !!s);
-      } else {
-        targetStaff = [...db.staff].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      }
-      return { training, attendances, targetStaff };
+    // Fetch attendances for this training
+    const attQuery = query(collection(db, ATTENDANCES_COL), where('trainingId', '==', id));
+    const attSnap = await getDocs(attQuery);
+    const attendances: Attendance[] = [];
+    attSnap.forEach((d) => {
+      attendances.push({ ...(d.data() as Attendance), id: d.id });
     });
-  } catch (err) {
-    const db = getLocalDB();
-    const training = db.trainings.find((t) => t.id === id);
-    if (!training) throw new Error('연수를 찾을 수 없습니다.');
-    const attendances = db.attendances.filter((a) => a.trainingId === id);
 
+    // Fetch staff
+    const allStaff = await fetchStaff();
     let targetStaff: Staff[] = [];
     if (training.targetStaffIds && training.targetStaffIds.length > 0) {
       targetStaff = training.targetStaffIds
-        .map((id) => db.staff.find((s) => s.id === id))
+        .map((tid) => allStaff.find((s) => s.id === tid))
         .filter((s): s is Staff => !!s);
     } else {
-      targetStaff = [...db.staff].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      targetStaff = allStaff;
     }
+
     return { training, attendances, targetStaff };
+  } catch (err) {
+    console.error('fetchTraining error:', err);
+    throw err;
   }
 }
 
 export async function createTraining(data: Partial<Training>): Promise<Training> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const now = new Date().toISOString();
-      const newTraining: Training = {
-        id: `train-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        title: data.title || '새 교직원 연수',
-        date: data.date || '',
-        location: data.location || '',
-        target: data.target || '전 교직원',
-        manager: data.manager || '',
-        schoolName: data.schoolName || db.config.schoolName,
-        memo: data.memo || '',
-        targetStaffIds: data.targetStaffIds || db.staff.map((s) => s.id),
-        createdAt: now,
-        updatedAt: now,
-      };
-      db.trainings.unshift(newTraining);
-      saveLocalDB(db);
-      return newTraining;
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const now = new Date().toISOString();
-    const newTraining: Training = {
-      id: `train-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      title: data.title || '새 교직원 연수',
-      date: data.date || '',
-      location: data.location || '',
-      target: data.target || '전 교직원',
-      manager: data.manager || '',
-      schoolName: data.schoolName || db.config.schoolName,
-      memo: data.memo || '',
-      targetStaffIds: data.targetStaffIds || db.staff.map((s) => s.id),
-      createdAt: now,
-      updatedAt: now,
-    };
-    db.trainings.unshift(newTraining);
-    saveLocalDB(db);
-    return newTraining;
-  }
+  const now = new Date().toISOString();
+  const id = `train-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const config = await fetchSchoolConfig();
+  const allStaff = await fetchStaff();
+
+  const newTraining: Training = {
+    id,
+    title: data.title?.trim() || '새 교직원 연수',
+    date: data.date?.trim() || '',
+    location: data.location?.trim() || '',
+    target: data.target?.trim() || '전 교직원',
+    manager: data.manager?.trim() || '',
+    schoolName: data.schoolName?.trim() || config.schoolName,
+    memo: data.memo?.trim() || '',
+    notes: data.notes || {},
+    targetStaffIds: data.targetStaffIds || allStaff.map((s) => s.id),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const docRef = doc(db, TRAININGS_COL, id);
+  await setDoc(docRef, newTraining);
+  return newTraining;
 }
 
 export async function updateTraining(id: string, data: Partial<Training>): Promise<Training> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const idx = db.trainings.findIndex((t) => t.id === id);
-      if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
-      db.trainings[idx] = {
-        ...db.trainings[idx],
-        ...data,
-        updatedAt: new Date().toISOString(),
-      };
-      saveLocalDB(db);
-      return db.trainings[idx];
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const idx = db.trainings.findIndex((t) => t.id === id);
-    if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
-    db.trainings[idx] = {
-      ...db.trainings[idx],
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-    saveLocalDB(db);
-    return db.trainings[idx];
-  }
+  const docRef = doc(db, TRAININGS_COL, id);
+  const updatedAt = new Date().toISOString();
+  const updatePayload = {
+    ...data,
+    updatedAt,
+  };
+  await setDoc(docRef, updatePayload, { merge: true });
+
+  const updatedSnap = await getDoc(docRef);
+  return { ...(updatedSnap.data() as Training), id: updatedSnap.id };
 }
 
 export async function updateTrainingNotes(
   trainingId: string,
   notes: Record<string, string>
 ): Promise<{ success: boolean; notes: Record<string, string> }> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${trainingId}/notes`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes }),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const idx = db.trainings.findIndex((t) => t.id === trainingId);
-      if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
-      db.trainings[idx].notes = {
-        ...(db.trainings[idx].notes || {}),
-        ...notes,
-      };
-      db.trainings[idx].updatedAt = new Date().toISOString();
-      saveLocalDB(db);
-      return { success: true, notes: db.trainings[idx].notes || {} };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const idx = db.trainings.findIndex((t) => t.id === trainingId);
-    if (idx === -1) throw new Error('연수를 찾을 수 없습니다.');
-    db.trainings[idx].notes = {
-      ...(db.trainings[idx].notes || {}),
-      ...notes,
-    };
-    db.trainings[idx].updatedAt = new Date().toISOString();
-    saveLocalDB(db);
-    return { success: true, notes: db.trainings[idx].notes || {} };
-  }
+  const docRef = doc(db, TRAININGS_COL, trainingId);
+  const updatedAt = new Date().toISOString();
+  await setDoc(docRef, { notes, updatedAt }, { merge: true });
+  return { success: true, notes };
 }
 
 export async function deleteTraining(id: string): Promise<{ success: boolean; message: string }> {
+  // Delete training document
+  await deleteDoc(doc(db, TRAININGS_COL, id));
+
+  // Delete all attendances for this training
   try {
-    const res = await fetch(`${API_BASE}/trainings/${id}`, {
-      method: 'DELETE',
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.trainings = db.trainings.filter((t) => t.id !== id);
-      db.attendances = db.attendances.filter((a) => a.trainingId !== id);
-      saveLocalDB(db);
-      return { success: true, message: '연수가 삭제되었습니다.' };
-    });
+    const attQuery = query(collection(db, ATTENDANCES_COL), where('trainingId', '==', id));
+    const attSnap = await getDocs(attQuery);
+    if (!attSnap.empty) {
+      const batch = writeBatch(db);
+      attSnap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
   } catch (err) {
-    const db = getLocalDB();
-    db.trainings = db.trainings.filter((t) => t.id !== id);
-    db.attendances = db.attendances.filter((a) => a.trainingId !== id);
-    saveLocalDB(db);
-    return { success: true, message: '연수가 삭제되었습니다.' };
+    console.error('Error deleting training attendances:', err);
   }
+
+  return { success: true, message: '연수가 성공적으로 삭제되었습니다.' };
 }
 
 // ==================== ATTENDANCES / SIGNATURES API ====================
@@ -229,225 +187,129 @@ export async function submitAttendance(
     deviceInfo?: string;
   }
 ): Promise<{ success: boolean; attendance: Attendance; totalAttendees: number }> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${trainingId}/attendances`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const now = new Date().toISOString();
-      const existingIdx = db.attendances.findIndex(
-        (a) =>
-          a.trainingId === trainingId &&
-          ((data.staffId && a.staffId === data.staffId) ||
-            a.name.trim().toLowerCase() === data.name.trim().toLowerCase())
-      );
+  const now = new Date().toISOString();
 
-      let savedAtt: Attendance;
-      if (existingIdx !== -1) {
-        savedAtt = {
-          ...db.attendances[existingIdx],
-          ...data,
-          signedAt: now,
-        };
-        db.attendances[existingIdx] = savedAtt;
-      } else {
-        savedAtt = {
-          id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          trainingId,
-          staffId: data.staffId,
-          name: data.name,
-          department: data.department || '',
-          position: data.position || '',
-          signature: data.signature,
-          signedAt: now,
-          deviceInfo: data.deviceInfo || 'Web Browser',
-        };
-        db.attendances.push(savedAtt);
-      }
-      saveLocalDB(db);
-      const total = db.attendances.filter((a) => a.trainingId === trainingId).length;
-      return { success: true, attendance: savedAtt, totalAttendees: total };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const now = new Date().toISOString();
-    const existingIdx = db.attendances.findIndex(
-      (a) =>
-        a.trainingId === trainingId &&
-        ((data.staffId && a.staffId === data.staffId) ||
-          a.name.trim().toLowerCase() === data.name.trim().toLowerCase())
-    );
+  // Find existing attendance for this staff in this training
+  let existingId: string | null = null;
+  const attQuery = query(collection(db, ATTENDANCES_COL), where('trainingId', '==', trainingId));
+  const attSnap = await getDocs(attQuery);
 
-    let savedAtt: Attendance;
-    if (existingIdx !== -1) {
-      savedAtt = {
-        ...db.attendances[existingIdx],
-        ...data,
-        signedAt: now,
-      };
-      db.attendances[existingIdx] = savedAtt;
-    } else {
-      savedAtt = {
-        id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        trainingId,
-        staffId: data.staffId,
-        name: data.name,
-        department: data.department || '',
-        position: data.position || '',
-        signature: data.signature,
-        signedAt: now,
-        deviceInfo: data.deviceInfo || 'Web Browser',
-      };
-      db.attendances.push(savedAtt);
+  attSnap.forEach((d) => {
+    const att = d.data() as Attendance;
+    if (
+      (data.staffId && att.staffId === data.staffId) ||
+      att.name?.trim().toLowerCase() === data.name.trim().toLowerCase()
+    ) {
+      existingId = d.id;
     }
-    saveLocalDB(db);
-    const total = db.attendances.filter((a) => a.trainingId === trainingId).length;
-    return { success: true, attendance: savedAtt, totalAttendees: total };
-  }
+  });
+
+  const attendanceId =
+    existingId || `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const savedAtt: Attendance = {
+    id: attendanceId,
+    trainingId,
+    staffId: data.staffId,
+    name: data.name.trim(),
+    department: data.department?.trim() || '',
+    position: data.position?.trim() || '',
+    signature: data.signature,
+    signedAt: now,
+    deviceInfo: data.deviceInfo || 'Web Browser',
+  };
+
+  await setDoc(doc(db, ATTENDANCES_COL, attendanceId), savedAtt);
+
+  // Recount total attendees
+  const countSnap = await getDocs(attQuery);
+  const total = countSnap.size;
+
+  return { success: true, attendance: savedAtt, totalAttendees: total };
 }
 
 export async function deleteAttendance(
   trainingId: string,
   attendanceId: string
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${trainingId}/attendances/${attendanceId}`, {
-      method: 'DELETE',
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.attendances = db.attendances.filter(
-        (a) => !(a.trainingId === trainingId && a.id === attendanceId)
-      );
-      saveLocalDB(db);
-      return { success: true, message: '참석자 서명이 삭제되었습니다.' };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    db.attendances = db.attendances.filter(
-      (a) => !(a.trainingId === trainingId && a.id === attendanceId)
-    );
-    saveLocalDB(db);
-    return { success: true, message: '참석자 서명이 삭제되었습니다.' };
-  }
+  await deleteDoc(doc(db, ATTENDANCES_COL, attendanceId));
+  return { success: true, message: '참석자 서명이 삭제되었습니다.' };
 }
 
 export async function seedBulkAttendees(
   trainingId: string,
   count?: number
 ): Promise<{ success: boolean; addedCount: number; totalCount: number }> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${trainingId}/seed-bulk`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count }),
+  const { training, attendances, targetStaff } = await fetchTraining(trainingId);
+  const unsignedStaff = targetStaff.filter(
+    (s) =>
+      !attendances.some(
+        (a) => a.staffId === s.id || a.name.trim().toLowerCase() === s.name.trim().toLowerCase()
+      )
+  );
+
+  const targetCount = count ? Math.min(count, unsignedStaff.length) : unsignedStaff.length;
+  let added = 0;
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  for (let i = 0; i < targetCount; i++) {
+    const staff = unsignedStaff[i];
+    const id = `att-gen-${Date.now()}-${i}`;
+    const ref = doc(db, ATTENDANCES_COL, id);
+    batch.set(ref, {
+      id,
+      trainingId,
+      staffId: staff.id,
+      name: staff.name,
+      department: staff.department,
+      position: staff.position,
+      signature: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60" viewBox="0 0 160 60"><path d="M${20 + (i % 10)},${25 + (i % 15)} Q${50 + (i % 20)},${10 + (i % 20)} ${90 + (i % 20)},${40 - (i % 10)} T${140 - (i % 10)},${30 + (i % 10)}" stroke="%231e293b" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`,
+      signedAt: now,
+      deviceInfo: 'Sample Generated',
     });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const training = db.trainings.find((t) => t.id === trainingId);
-      const targetStaffList =
-        training?.targetStaffIds && training.targetStaffIds.length > 0
-          ? db.staff.filter((s) => training.targetStaffIds?.includes(s.id))
-          : db.staff;
-
-      const unsignedStaff = targetStaffList.filter(
-        (s) => !db.attendances.some((a) => a.trainingId === trainingId && (a.staffId === s.id || a.name === s.name))
-      );
-
-      const targetCount = count ? Math.min(count, unsignedStaff.length) : unsignedStaff.length;
-      let added = 0;
-      const now = new Date().toISOString();
-
-      for (let i = 0; i < targetCount; i++) {
-        const staff = unsignedStaff[i];
-        db.attendances.push({
-          id: `att-gen-${Date.now()}-${i}`,
-          trainingId,
-          staffId: staff.id,
-          name: staff.name,
-          department: staff.department,
-          position: staff.position,
-          signature: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60" viewBox="0 0 160 60"><path d="M${20 + (i % 10)},${25 + (i % 15)} Q${50 + (i % 20)},${10 + (i % 20)} ${90 + (i % 20)},${40 - (i % 10)} T${140 - (i % 10)},${30 + (i % 10)}" stroke="%231e293b" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`,
-          signedAt: now,
-          deviceInfo: 'Sample Generated'
-        });
-        added++;
-      }
-      saveLocalDB(db);
-      const total = db.attendances.filter((a) => a.trainingId === trainingId).length;
-      return { success: true, addedCount: added, totalCount: total };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const training = db.trainings.find((t) => t.id === trainingId);
-    const targetStaffList =
-      training?.targetStaffIds && training.targetStaffIds.length > 0
-        ? db.staff.filter((s) => training.targetStaffIds?.includes(s.id))
-        : db.staff;
-
-    const unsignedStaff = targetStaffList.filter(
-      (s) => !db.attendances.some((a) => a.trainingId === trainingId && (a.staffId === s.id || a.name === s.name))
-    );
-
-    const targetCount = count ? Math.min(count, unsignedStaff.length) : unsignedStaff.length;
-    let added = 0;
-    const now = new Date().toISOString();
-
-    for (let i = 0; i < targetCount; i++) {
-      const staff = unsignedStaff[i];
-      db.attendances.push({
-        id: `att-gen-${Date.now()}-${i}`,
-        trainingId,
-        staffId: staff.id,
-        name: staff.name,
-        department: staff.department,
-        position: staff.position,
-        signature: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60" viewBox="0 0 160 60"><path d="M${20 + (i % 10)},${25 + (i % 15)} Q${50 + (i % 20)},${10 + (i % 20)} ${90 + (i % 20)},${40 - (i % 10)} T${140 - (i % 10)},${30 + (i % 10)}" stroke="%231e293b" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`,
-        signedAt: now,
-        deviceInfo: 'Sample Generated'
-      });
-      added++;
-    }
-    saveLocalDB(db);
-    const total = db.attendances.filter((a) => a.trainingId === trainingId).length;
-    return { success: true, addedCount: added, totalCount: total };
+    added++;
   }
+
+  if (added > 0) {
+    await batch.commit();
+  }
+
+  const newAttSnap = await getDocs(
+    query(collection(db, ATTENDANCES_COL), where('trainingId', '==', trainingId))
+  );
+
+  return { success: true, addedCount: added, totalCount: newAttSnap.size };
 }
 
-export async function clearAllAttendances(trainingId: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/trainings/${trainingId}/clear-attendances`, {
-      method: 'POST',
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.attendances = db.attendances.filter((a) => a.trainingId !== trainingId);
-      saveLocalDB(db);
-      return { success: true, message: '모든 서명이 초기화되었습니다.' };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    db.attendances = db.attendances.filter((a) => a.trainingId !== trainingId);
-    saveLocalDB(db);
-    return { success: true, message: '모든 서명이 초기화되었습니다.' };
+export async function clearAllAttendances(
+  trainingId: string
+): Promise<{ success: boolean; message: string }> {
+  const attQuery = query(collection(db, ATTENDANCES_COL), where('trainingId', '==', trainingId));
+  const attSnap = await getDocs(attQuery);
+  if (!attSnap.empty) {
+    const batch = writeBatch(db);
+    attSnap.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
   }
+  return { success: true, message: '모든 서명이 초기화되었습니다.' };
 }
 
 // ==================== MASTER STAFF API ====================
 
 export async function fetchStaff(): Promise<Staff[]> {
   try {
-    const res = await fetch(`${API_BASE}/staff`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      return [...db.staff].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    await ensureInitialStaffSeeded();
+    const snap = await getDocs(collection(db, STAFF_COL));
+    const staffList: Staff[] = [];
+    snap.forEach((d) => {
+      staffList.push({ ...(d.data() as Staff), id: d.id });
     });
+
+    return staffList.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   } catch (err) {
-    const db = getLocalDB();
-    return [...db.staff].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    console.error('fetchStaff error:', err);
+    return defaultSampleStaff;
   }
 }
 
@@ -461,244 +323,121 @@ export async function lookupStaff(params: {
   isDuplicateName: boolean;
   candidates: Staff[];
 }> {
-  try {
-    const searchParams = new URLSearchParams();
-    if (params.query) searchParams.set('query', params.query);
-    if (params.name) searchParams.set('name', params.name);
-    if (params.code) searchParams.set('code', params.code);
+  const allStaff = await fetchStaff();
+  const q = (params.query || params.name || params.code || '').trim().toLowerCase();
+  let candidates: Staff[] = [];
 
-    const res = await fetch(`${API_BASE}/staff/lookup?${searchParams.toString()}`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const q = (params.query || params.name || params.code || '').trim().toLowerCase();
-      let candidates: Staff[] = [];
-
-      if (params.code) {
-        candidates = db.staff.filter((s) => s.code?.toLowerCase() === params.code?.toLowerCase());
-      } else if (params.name) {
-        candidates = db.staff.filter((s) => s.name.toLowerCase() === params.name?.toLowerCase());
-      } else if (q) {
-        // Match code first, then exact name, then partial
-        candidates = db.staff.filter((s) => s.code?.toLowerCase() === q);
-        if (candidates.length === 0) {
-          candidates = db.staff.filter((s) => s.name.toLowerCase() === q);
-        }
-        if (candidates.length === 0) {
-          candidates = db.staff.filter(
-            (s) =>
-              s.name.toLowerCase().includes(q) ||
-              s.department.toLowerCase().includes(q) ||
-              (s.code && s.code.toLowerCase().includes(q))
-          );
-        }
-      } else {
-        candidates = db.staff;
-      }
-
-      const nameCounts: Record<string, number> = {};
-      db.staff.forEach((s) => {
-        nameCounts[s.name] = (nameCounts[s.name] || 0) + 1;
-      });
-
-      return {
-        query: q,
-        count: candidates.length,
-        isDuplicateName: candidates.some((c) => (nameCounts[c.name] || 0) > 1),
-        candidates,
-      };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const q = (params.query || params.name || params.code || '').trim().toLowerCase();
-    let candidates: Staff[] = [];
-
-    if (params.code) {
-      candidates = db.staff.filter((s) => s.code?.toLowerCase() === params.code?.toLowerCase());
-    } else if (params.name) {
-      candidates = db.staff.filter((s) => s.name.toLowerCase() === params.name?.toLowerCase());
-    } else if (q) {
-      candidates = db.staff.filter((s) => s.code?.toLowerCase() === q);
-      if (candidates.length === 0) {
-        candidates = db.staff.filter((s) => s.name.toLowerCase() === q);
-      }
-      if (candidates.length === 0) {
-        candidates = db.staff.filter(
-          (s) =>
-            s.name.toLowerCase().includes(q) ||
-            s.department.toLowerCase().includes(q) ||
-            (s.code && s.code.toLowerCase().includes(q))
-        );
-      }
-    } else {
-      candidates = db.staff;
+  if (params.code) {
+    candidates = allStaff.filter((s) => s.code?.toLowerCase() === params.code?.toLowerCase());
+  } else if (params.name) {
+    candidates = allStaff.filter((s) => s.name.toLowerCase() === params.name?.toLowerCase());
+  } else if (q) {
+    candidates = allStaff.filter((s) => s.code?.toLowerCase() === q);
+    if (candidates.length === 0) {
+      candidates = allStaff.filter((s) => s.name.toLowerCase() === q);
     }
-
-    const nameCounts: Record<string, number> = {};
-    db.staff.forEach((s) => {
-      nameCounts[s.name] = (nameCounts[s.name] || 0) + 1;
-    });
-
-    return {
-      query: q,
-      count: candidates.length,
-      isDuplicateName: candidates.some((c) => (nameCounts[c.name] || 0) > 1),
-      candidates,
-    };
+    if (candidates.length === 0) {
+      candidates = allStaff.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.department.toLowerCase().includes(q) ||
+          (s.code && s.code.toLowerCase().includes(q))
+      );
+    }
+  } else {
+    candidates = allStaff;
   }
+
+  const nameCounts: Record<string, number> = {};
+  allStaff.forEach((s) => {
+    nameCounts[s.name] = (nameCounts[s.name] || 0) + 1;
+  });
+
+  return {
+    query: q,
+    count: candidates.length,
+    isDuplicateName: candidates.some((c) => (nameCounts[c.name] || 0) > 1),
+    candidates,
+  };
 }
 
 export async function createStaff(data: Partial<Staff>): Promise<Staff> {
-  try {
-    const res = await fetch(`${API_BASE}/staff`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const newStaff: Staff = {
-        id: `stf-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        code: data.code?.trim() || undefined,
-        name: data.name?.trim() || '',
-        department: data.department?.trim() || '',
-        position: data.position?.trim() || '',
-        order: (db.staff.length ? Math.max(...db.staff.map((s) => s.order ?? 0)) : 0) + 1,
-      };
-      db.staff.push(newStaff);
-      saveLocalDB(db);
-      return newStaff;
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const newStaff: Staff = {
-      id: `stf-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      code: data.code?.trim() || undefined,
-      name: data.name?.trim() || '',
-      department: data.department?.trim() || '',
-      position: data.position?.trim() || '',
-      order: (db.staff.length ? Math.max(...db.staff.map((s) => s.order ?? 0)) : 0) + 1,
-    };
-    db.staff.push(newStaff);
-    saveLocalDB(db);
-    return newStaff;
-  }
+  const allStaff = await fetchStaff();
+  const newStaff: Staff = {
+    id: `stf-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    code: data.code?.trim() || undefined,
+    name: data.name?.trim() || '',
+    department: data.department?.trim() || '',
+    position: data.position?.trim() || '',
+    order: (allStaff.length ? Math.max(...allStaff.map((s) => s.order ?? 0)) : 0) + 1,
+  };
+
+  await setDoc(doc(db, STAFF_COL, newStaff.id), newStaff);
+  return newStaff;
 }
 
 export async function updateStaff(id: string, data: Partial<Staff>): Promise<Staff> {
-  try {
-    const res = await fetch(`${API_BASE}/staff/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const idx = db.staff.findIndex((s) => s.id === id);
-      if (idx === -1) throw new Error('교직원을 찾을 수 없습니다.');
-      db.staff[idx] = { ...db.staff[idx], ...data };
-      saveLocalDB(db);
-      return db.staff[idx];
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    const idx = db.staff.findIndex((s) => s.id === id);
-    if (idx === -1) throw new Error('교직원을 찾을 수 없습니다.');
-    db.staff[idx] = { ...db.staff[idx], ...data };
-    saveLocalDB(db);
-    return db.staff[idx];
-  }
+  const docRef = doc(db, STAFF_COL, id);
+  await setDoc(docRef, data, { merge: true });
+  const updated = await getDoc(docRef);
+  return { ...(updated.data() as Staff), id: updated.id };
 }
 
 export async function deleteStaff(id: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/staff/${id}`, {
-      method: 'DELETE',
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.staff = db.staff.filter((s) => s.id !== id);
-      saveLocalDB(db);
-      return { success: true, message: '교직원이 삭제되었습니다.' };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    db.staff = db.staff.filter((s) => s.id !== id);
-    saveLocalDB(db);
-    return { success: true, message: '교직원이 삭제되었습니다.' };
-  }
+  await deleteDoc(doc(db, STAFF_COL, id));
+  return { success: true, message: '교직원이 삭제되었습니다.' };
 }
 
 export async function bulkImportStaff(
   staffList: Partial<Staff>[],
   mode: 'replace' | 'append' = 'append'
 ): Promise<{ success: boolean; count: number; staff: Staff[] }> {
-  try {
-    const res = await fetch(`${API_BASE}/staff/bulk`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staffList, mode }),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      let newStaffList: Staff[] = mode === 'replace' ? [] : [...db.staff];
-      let startOrder = newStaffList.length ? Math.max(...newStaffList.map((s) => s.order ?? 0)) + 1 : 1;
+  const allStaff = await fetchStaff();
+  const batch = writeBatch(db);
 
-      staffList.forEach((item) => {
-        if (!item.name || !item.name.trim()) return;
-        newStaffList.push({
-          id: `stf-bulk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          code: item.code?.trim() || undefined,
-          name: item.name.trim(),
-          department: item.department?.trim() || '교무부',
-          position: item.position?.trim() || '',
-          order: startOrder++,
-        });
-      });
-
-      db.staff = newStaffList;
-      saveLocalDB(db);
-      return { success: true, count: staffList.length, staff: db.staff };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    let newStaffList: Staff[] = mode === 'replace' ? [] : [...db.staff];
-    let startOrder = newStaffList.length ? Math.max(...newStaffList.map((s) => s.order ?? 0)) + 1 : 1;
-
-    staffList.forEach((item) => {
-      if (!item.name || !item.name.trim()) return;
-      newStaffList.push({
-        id: `stf-bulk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        code: item.code?.trim() || undefined,
-        name: item.name.trim(),
-        department: item.department?.trim() || '교무부',
-        position: item.position?.trim() || '',
-        order: startOrder++,
-      });
-    });
-
-    db.staff = newStaffList;
-    saveLocalDB(db);
-    return { success: true, count: staffList.length, staff: db.staff };
+  if (mode === 'replace') {
+    // Delete all existing staff
+    const snap = await getDocs(collection(db, STAFF_COL));
+    snap.forEach((d) => batch.delete(d.ref));
   }
+
+  let startOrder =
+    mode === 'replace' ? 1 : (allStaff.length ? Math.max(...allStaff.map((s) => s.order ?? 0)) : 0) + 1;
+
+  const createdStaff: Staff[] = [];
+  staffList.forEach((item) => {
+    if (!item.name || !item.name.trim()) return;
+    const newStaff: Staff = {
+      id: `stf-bulk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      code: item.code?.trim() || undefined,
+      name: item.name.trim(),
+      department: item.department?.trim() || '교무부',
+      position: item.position?.trim() || '',
+      order: startOrder++,
+    };
+    const ref = doc(db, STAFF_COL, newStaff.id);
+    batch.set(ref, newStaff);
+    createdStaff.push(newStaff);
+  });
+
+  await batch.commit();
+  const refreshed = await fetchStaff();
+  return { success: true, count: createdStaff.length, staff: refreshed };
 }
 
 export async function resetSampleStaff(): Promise<{ success: boolean; staff: Staff[] }> {
-  try {
-    const res = await fetch(`${API_BASE}/staff/reset-sample`, {
-      method: 'POST',
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.staff = defaultSampleStaff;
-      saveLocalDB(db);
-      return { success: true, staff: db.staff };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    db.staff = defaultSampleStaff;
-    saveLocalDB(db);
-    return { success: true, staff: db.staff };
-  }
+  const batch = writeBatch(db);
+  const snap = await getDocs(collection(db, STAFF_COL));
+  snap.forEach((d) => batch.delete(d.ref));
+
+  defaultSampleStaff.forEach((staff) => {
+    const ref = doc(db, STAFF_COL, staff.id);
+    batch.set(ref, staff);
+  });
+
+  await batch.commit();
+  const refreshed = await fetchStaff();
+  return { success: true, staff: refreshed };
 }
 
 // ==================== TEACHER PORTAL API ====================
@@ -717,190 +456,110 @@ export async function fetchTeacherTrainings(
   name?: string,
   staffId?: string
 ): Promise<{ teacher: Staff; trainings: TeacherTrainingItem[] }> {
-  try {
-    const params = new URLSearchParams();
-    if (name) params.set('name', name);
-    if (staffId) params.set('staffId', staffId);
+  const allStaff = await fetchStaff();
+  const allTrainings = await fetchTrainings();
+  const config = await fetchSchoolConfig();
 
-    const res = await fetch(`${API_BASE}/teacher/trainings?${params.toString()}`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      let teacher: Staff | undefined;
-      if (staffId) {
-        teacher = db.staff.find((s) => s.id === staffId);
-      } else if (name) {
-        teacher = db.staff.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase());
-      }
-
-      if (!teacher) {
-        teacher = {
-          id: staffId || `stf-temp-${Date.now()}`,
-          name: name || '선생님',
-          department: '교무부',
-          position: '교사',
-        };
-      }
-
-      const assignedTrainings = db.trainings.filter((t) => {
-        if (!t.targetStaffIds || t.targetStaffIds.length === 0) return true;
-        return t.targetStaffIds.includes(teacher!.id);
-      });
-
-      const items: TeacherTrainingItem[] = assignedTrainings.map((t) => {
-        const attendance =
-          db.attendances.find(
-            (a) =>
-              a.trainingId === t.id &&
-              ((teacher!.id && a.staffId === teacher!.id) ||
-                a.name.trim().toLowerCase() === teacher!.name.trim().toLowerCase())
-          ) || null;
-
-        return {
-          id: t.id,
-          title: t.title,
-          date: t.date,
-          location: t.location,
-          schoolName: t.schoolName || db.config.schoolName,
-          isSigned: !!attendance,
-          attendance,
-        };
-      });
-
-      return { teacher, trainings: items };
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    let teacher: Staff | undefined;
-    if (staffId) {
-      teacher = db.staff.find((s) => s.id === staffId);
-    } else if (name) {
-      teacher = db.staff.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase());
-    }
-
-    if (!teacher) {
-      teacher = {
-        id: staffId || `stf-temp-${Date.now()}`,
-        name: name || '선생님',
-        department: '교무부',
-        position: '교사',
-      };
-    }
-
-    const assignedTrainings = db.trainings.filter((t) => {
-      if (!t.targetStaffIds || t.targetStaffIds.length === 0) return true;
-      return t.targetStaffIds.includes(teacher!.id);
-    });
-
-    const items: TeacherTrainingItem[] = assignedTrainings.map((t) => {
-      const attendance =
-        db.attendances.find(
-          (a) =>
-            a.trainingId === t.id &&
-            ((teacher!.id && a.staffId === teacher!.id) ||
-              a.name.trim().toLowerCase() === teacher!.name.trim().toLowerCase())
-        ) || null;
-
-      return {
-        id: t.id,
-        title: t.title,
-        date: t.date,
-        location: t.location,
-        schoolName: t.schoolName || db.config.schoolName,
-        isSigned: !!attendance,
-        attendance,
-      };
-    });
-
-    return { teacher, trainings: items };
+  let teacher: Staff | undefined;
+  if (staffId) {
+    teacher = allStaff.find((s) => s.id === staffId);
+  } else if (name) {
+    teacher = allStaff.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase());
   }
+
+  if (!teacher) {
+    teacher = {
+      id: staffId || `stf-temp-${Date.now()}`,
+      name: name || '선생님',
+      department: '교무부',
+      position: '교사',
+    };
+  }
+
+  // Fetch all attendances for matching
+  const attSnap = await getDocs(collection(db, ATTENDANCES_COL));
+  const allAttendances: Attendance[] = [];
+  attSnap.forEach((d) => allAttendances.push({ ...(d.data() as Attendance), id: d.id }));
+
+  const assignedTrainings = allTrainings.filter((t) => {
+    if (!t.targetStaffIds || t.targetStaffIds.length === 0) return true;
+    return t.targetStaffIds.includes(teacher!.id);
+  });
+
+  const items: TeacherTrainingItem[] = assignedTrainings.map((t) => {
+    const attendance =
+      allAttendances.find(
+        (a) =>
+          a.trainingId === t.id &&
+          ((teacher!.id && a.staffId === teacher!.id) ||
+            a.name.trim().toLowerCase() === teacher!.name.trim().toLowerCase())
+      ) || null;
+
+    return {
+      id: t.id,
+      title: t.title,
+      date: t.date,
+      location: t.location,
+      schoolName: t.schoolName || config.schoolName,
+      isSigned: !!attendance,
+      attendance,
+    };
+  });
+
+  return { teacher, trainings: items };
 }
 
 // ==================== ADMIN & CONFIG API ====================
 
 export async function verifyAdminPassword(password: string): Promise<{ success: boolean; message: string }> {
   try {
-    const res = await fetch(`${API_BASE}/admin/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const expectedPassword = db.adminPassword || '1234';
-      if (password === expectedPassword) {
-        return { success: true, message: '인증 성공' };
-      }
-      throw new Error('비밀번호가 일치하지 않습니다.');
-    });
-  } catch (err: any) {
-    const db = getLocalDB();
-    const expectedPassword = db.adminPassword || '1234';
+    const authRef = doc(db, CONFIG_COL, 'auth');
+    const snap = await getDoc(authRef);
+    const expectedPassword = snap.exists() ? snap.data().adminPassword || '1234' : '1234';
+
     if (password === expectedPassword) {
       return { success: true, message: '인증 성공' };
     }
+    throw new Error('비밀번호가 일치하지 않습니다.');
+  } catch (err: any) {
     throw new Error(err.message || '비밀번호가 일치하지 않습니다.');
   }
 }
 
-export async function changeAdminPassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/admin/change-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      const expectedPassword = db.adminPassword || '1234';
-      if (currentPassword !== expectedPassword) {
-        throw new Error('현재 비밀번호가 일치하지 않습니다.');
-      }
-      db.adminPassword = newPassword.trim();
-      saveLocalDB(db);
-      return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
-    });
-  } catch (err: any) {
-    const db = getLocalDB();
-    const expectedPassword = db.adminPassword || '1234';
-    if (currentPassword !== expectedPassword) {
-      throw new Error('현재 비밀번호가 일치하지 않습니다.');
-    }
-    db.adminPassword = newPassword.trim();
-    saveLocalDB(db);
-    return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
+export async function changeAdminPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  const authRef = doc(db, CONFIG_COL, 'auth');
+  const snap = await getDoc(authRef);
+  const expectedPassword = snap.exists() ? snap.data().adminPassword || '1234' : '1234';
+
+  if (currentPassword !== expectedPassword) {
+    throw new Error('현재 비밀번호가 일치하지 않습니다.');
   }
+
+  await setDoc(authRef, { adminPassword: newPassword.trim() }, { merge: true });
+  return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
 }
 
 export async function fetchSchoolConfig(): Promise<SchoolConfig> {
   try {
-    const res = await fetch(`${API_BASE}/config`);
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      return db.config;
-    });
+    const configRef = doc(db, CONFIG_COL, 'school');
+    const snap = await getDoc(configRef);
+    if (!snap.exists()) {
+      await setDoc(configRef, DEFAULT_SCHOOL_CONFIG);
+      return DEFAULT_SCHOOL_CONFIG;
+    }
+    return { ...DEFAULT_SCHOOL_CONFIG, ...(snap.data() as SchoolConfig) };
   } catch (err) {
-    const db = getLocalDB();
-    return db.config;
+    console.error('fetchSchoolConfig error:', err);
+    return DEFAULT_SCHOOL_CONFIG;
   }
 }
 
 export async function updateSchoolConfig(config: Partial<SchoolConfig>): Promise<SchoolConfig> {
-  try {
-    const res = await fetch(`${API_BASE}/config`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
-    return await handleResponse(res, () => {
-      const db = getLocalDB();
-      db.config = { ...db.config, ...config };
-      saveLocalDB(db);
-      return db.config;
-    });
-  } catch (err) {
-    const db = getLocalDB();
-    db.config = { ...db.config, ...config };
-    saveLocalDB(db);
-    return db.config;
-  }
+  const configRef = doc(db, CONFIG_COL, 'school');
+  await setDoc(configRef, config, { merge: true });
+  const snap = await getDoc(configRef);
+  return { ...DEFAULT_SCHOOL_CONFIG, ...(snap.data() as SchoolConfig) };
 }
