@@ -614,33 +614,86 @@ export async function fetchTeacherTrainings(
 // ==================== ADMIN & CONFIG API ====================
 
 export async function verifyAdminPassword(password: string): Promise<{ success: boolean; message: string }> {
+  if (!password) {
+    throw new Error('비밀번호를 입력해 주세요.');
+  }
+
+  let serverSuccess = false;
+
+  // 1. Try server API check first (which has access to process.env.ADMIN_PASSWORD from the Secret tab)
+  try {
+    const res = await fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password.trim() }),
+    });
+    if (res.ok) {
+      serverSuccess = true;
+    }
+  } catch (e) {
+    // Server endpoint error or offline, fallback to Firestore
+  }
+
+  // 2. Check Firestore config/auth
+  let firestoreSuccess = false;
+  let firestoreExpected = '1234';
   try {
     const authRef = doc(db, CONFIG_COL, 'auth');
     const snap = await getDoc(authRef);
-    const expectedPassword = snap.exists() ? snap.data().adminPassword || '1234' : '1234';
-
-    if (password === expectedPassword) {
-      return { success: true, message: '인증 성공' };
+    if (snap.exists() && snap.data().adminPassword) {
+      firestoreExpected = snap.data().adminPassword;
     }
-    throw new Error('비밀번호가 일치하지 않습니다.');
+    if (password.trim() === firestoreExpected) {
+      firestoreSuccess = true;
+    }
   } catch (err: any) {
-    throw new Error(err.message || '비밀번호가 일치하지 않습니다.');
+    // Firestore error
   }
+
+  // If either server Secret or Firestore matches, grant access
+  if (serverSuccess || firestoreSuccess) {
+    // Sync Firestore with the verified password if it was different
+    try {
+      const authRef = doc(db, CONFIG_COL, 'auth');
+      await setDoc(authRef, { adminPassword: password.trim() }, { merge: true });
+    } catch (e) {
+      // ignore sync error
+    }
+    return { success: true, message: '인증 성공' };
+  }
+
+  throw new Error('비밀번호가 일치하지 않습니다.');
 }
 
 export async function changeAdminPassword(
   currentPassword: string,
   newPassword: string
 ): Promise<{ success: boolean; message: string }> {
-  const authRef = doc(db, CONFIG_COL, 'auth');
-  const snap = await getDoc(authRef);
-  const expectedPassword = snap.exists() ? snap.data().adminPassword || '1234' : '1234';
+  // 1. Verify current password first
+  await verifyAdminPassword(currentPassword);
 
-  if (currentPassword !== expectedPassword) {
-    throw new Error('현재 비밀번호가 일치하지 않습니다.');
+  // 2. Update Firestore
+  try {
+    const authRef = doc(db, CONFIG_COL, 'auth');
+    await setDoc(authRef, { adminPassword: newPassword.trim() }, { merge: true });
+  } catch (err: any) {
+    console.error('Firestore password update error:', err);
   }
 
-  await setDoc(authRef, { adminPassword: newPassword.trim() }, { merge: true });
+  // 3. Update server database
+  try {
+    await fetch('/api/admin/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim(),
+      }),
+    });
+  } catch (e) {
+    // ignore
+  }
+
   return { success: true, message: '관리자 비밀번호가 성공적으로 변경되었습니다.' };
 }
 

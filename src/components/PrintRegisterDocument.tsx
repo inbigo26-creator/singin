@@ -184,7 +184,7 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   return (
     <div
       id="printable-register-sheet"
-      className="bg-white text-black font-sans w-full max-w-[210mm] min-h-[297mm] h-auto mx-auto px-6 pt-8 pb-8 sm:px-10 sm:pt-10 sm:pb-10 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-lg rounded-sm"
+      className="bg-white text-black font-sans w-full max-w-[210mm] min-h-[297mm] h-auto mx-auto px-6 pt-14 pb-8 sm:px-10 sm:pt-16 sm:pb-10 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-lg rounded-sm"
       style={{
         width: '100%',
         maxWidth: '210mm',
@@ -193,7 +193,7 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
         color: '#000000',
       }}
     >
-      <div className="w-full flex flex-col pt-1 print:pt-1">
+      <div className="w-full flex flex-col pt-3 sm:pt-4 print:pt-4">
         {/* Top Header - School Name and Training Title */}
         <div className={`text-center ${titleMarginBottom} border-b-2 border-black ${contentWidthClass} mx-auto w-full`}>
           {settings.showSchoolHeader && (

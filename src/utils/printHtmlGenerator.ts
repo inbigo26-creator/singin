@@ -274,7 +274,7 @@ export function generateStandalonePrintHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 10mm 10mm 10mm 10mm;
+      margin: 20mm 10mm 10mm 10mm;
     }
     * {
       box-sizing: border-box;
@@ -293,7 +293,7 @@ export function generateStandalonePrintHtml(
       width: 190mm;
       margin: 0 auto;
       background-color: #ffffff;
-      padding-top: 2mm;
+      padding-top: 4mm;
     }
     table {
       border-collapse: collapse;
