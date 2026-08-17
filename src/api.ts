@@ -11,7 +11,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Training, Attendance, SchoolConfig, Staff } from './types';
+import { Training, Attendance, SchoolConfig, Staff, PrivacyPolicyConfig } from './types';
 import { defaultSampleStaff } from './localStore';
 
 // Collection references
@@ -101,10 +101,37 @@ export function compareStaffNumber(
 export async function fetchTrainings(): Promise<Training[]> {
   try {
     await ensureInitialStaffSeeded();
-    const snap = await getDocs(collection(db, TRAININGS_COL));
+    const [trainingsSnap, attSnap, staffList] = await Promise.all([
+      getDocs(collection(db, TRAININGS_COL)),
+      getDocs(collection(db, ATTENDANCES_COL)),
+      fetchStaff(),
+    ]);
+
+    // Count attendances per training
+    const attCountMap: Record<string, number> = {};
+    attSnap.forEach((d) => {
+      const att = d.data() as Attendance;
+      if (att.trainingId) {
+        attCountMap[att.trainingId] = (attCountMap[att.trainingId] || 0) + 1;
+      }
+    });
+
+    const totalStaffCount = staffList.length;
     const trainings: Training[] = [];
-    snap.forEach((d) => {
-      trainings.push({ ...(d.data() as Training), id: d.id });
+
+    trainingsSnap.forEach((d) => {
+      const data = d.data() as Training;
+      const targetCount =
+        data.targetStaffIds && data.targetStaffIds.length > 0
+          ? data.targetStaffIds.length
+          : totalStaffCount;
+
+      trainings.push({
+        ...data,
+        id: d.id,
+        attendanceCount: attCountMap[d.id] || 0,
+        totalTargetCount: targetCount,
+      });
     });
 
     return trainings.sort((a, b) => {
@@ -638,3 +665,85 @@ export async function updateSchoolConfig(config: Partial<SchoolConfig>): Promise
   const snap = await getDoc(configRef);
   return { ...DEFAULT_SCHOOL_CONFIG, ...(snap.data() as SchoolConfig) };
 }
+
+// ==================== PRIVACY POLICY API ====================
+
+export const DEFAULT_PRIVACY_POLICY: PrivacyPolicyConfig = {
+  version: '1.0.0 (2026)',
+  updatedAt: '2026. 8. 15.',
+  content: `[교직원 연수 전자서명 시스템 개인정보처리방침]
+
+1. 개인정보의 처리 목적
+본 시스템은 초·중등교육법 및 교원연수 관련 법령에 의거하여, 교직원의 교내·외 연수 참석 확인, 전자서명 수집, 연수 이수 결과 증빙 서명부 출력 및 감사 증빙 자료 보관을 목적으로 개인정보를 처리합니다. 처리하고 있는 개인정보는 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 관련 법령에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
+
+2. 처리하는 개인정보의 항목
+- 필수항목: 성명, 소속 부서, 직위/직급, 교직원 고유번호, 전자 필기 서명 이미지 데이터, 서명 일시, 접속 기기 정보
+- 수집방법: 교직원이 본인 확인 후 전자서명 패드를 통해 직접 입력 및 저장
+
+3. 개인정보의 보유 및 이용 기간
+- 수집된 전자서명 및 연수 참석 정보는 해당 학년도 연수 이수 실적 보고 및 교육청 학사·종합감사 보관 주기(보존 연한 준수 후)에 따라 안전하게 보관 후 파기됩니다.
+
+4. 개인정보의 제3자 제공 및 처리 위탁
+- 본 시스템은 정보주체의 동의 없이 개인정보를 외부에 제공하거나 위탁하지 않으며, 관련 법령에 근거한 정당한 기관의 요청이 있는 경우에 한하여 제공됩니다.
+
+5. 정보주체의 권리·의무 및 행사방법
+- 교직원은 언제든지 등록된 본인의 전자서명 정보에 대해 열람, 정정, 삭제(재서명)를 요구할 수 있습니다.
+
+6. 개인정보의 안전성 확보 조치
+- 전자서명 데이터 및 교직원 명부는 인가된 관리자만 접근할 수 있도록 보안 비밀번호 인증 및 접근 제어를 적용하고 있습니다.
+
+7. 개인정보 보호책임자
+- 담당 부서: 교육정보부 (또는 교무기획부)
+- 문의처: 교내 교직원 연수 담당자
+`,
+};
+
+export async function fetchPrivacyPolicy(): Promise<PrivacyPolicyConfig> {
+  try {
+    const docRef = doc(db, CONFIG_COL, 'privacy_policy');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      const savedLocal = localStorage.getItem('school_privacy_policy');
+      if (savedLocal) {
+        try {
+          return JSON.parse(savedLocal);
+        } catch {}
+      }
+      return DEFAULT_PRIVACY_POLICY;
+    }
+    return { ...DEFAULT_PRIVACY_POLICY, ...(snap.data() as PrivacyPolicyConfig) };
+  } catch (err) {
+    console.error('fetchPrivacyPolicy error:', err);
+    const savedLocal = localStorage.getItem('school_privacy_policy');
+    if (savedLocal) {
+      try {
+        return JSON.parse(savedLocal);
+      } catch {}
+    }
+    return DEFAULT_PRIVACY_POLICY;
+  }
+}
+
+export async function updatePrivacyPolicy(data: Partial<PrivacyPolicyConfig>): Promise<PrivacyPolicyConfig> {
+  try {
+    const docRef = doc(db, CONFIG_COL, 'privacy_policy');
+    const updated: PrivacyPolicyConfig = {
+      version: data.version || DEFAULT_PRIVACY_POLICY.version,
+      updatedAt: data.updatedAt || new Date().toISOString().split('T')[0].replace(/-/g, '. ') + '.',
+      content: data.content || DEFAULT_PRIVACY_POLICY.content,
+    };
+    await setDoc(docRef, updated, { merge: true });
+    localStorage.setItem('school_privacy_policy', JSON.stringify(updated));
+    return updated;
+  } catch (err) {
+    console.error('updatePrivacyPolicy error:', err);
+    const fallback: PrivacyPolicyConfig = {
+      version: data.version || DEFAULT_PRIVACY_POLICY.version,
+      updatedAt: data.updatedAt || new Date().toISOString().split('T')[0].replace(/-/g, '. ') + '.',
+      content: data.content || DEFAULT_PRIVACY_POLICY.content,
+    };
+    localStorage.setItem('school_privacy_policy', JSON.stringify(fallback));
+    return fallback;
+  }
+}
+

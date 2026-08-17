@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lock, PenTool, RotateCcw } from 'lucide-react';
 import { Staff, Training } from '../types';
 import { trimAndOptimizeSignature } from '../utils/signatureUtils';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import {
   fetchTeacherTrainings,
   submitAttendance,
@@ -22,6 +23,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   targetTrainingId,
   schoolName,
 }) => {
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   // Current specific training if loaded via direct link/QR
   const [directTraining, setDirectTraining] = useState<Training | null>(null);
 
@@ -323,16 +325,16 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     return (
       <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 flex flex-col">
         {/* Top Minimal Bar */}
-        <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+        <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
               교직원 연수 전자서명
             </h1>
           </div>
           <button
             type="button"
             onClick={onSwitchToAdmin}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
           >
             <Lock className="w-3.5 h-3.5 text-slate-500" />
             <span>관리자 로그인</span>
@@ -363,7 +365,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </div>
                 <p className="text-xs text-slate-500">
                   {candidates.length > 1
-                    ? `동명이인 구분을 위해 본인의 소속 부서, 직급 등을 확인 후 선택해 주세요.`
+                    ? `동명이인 구분을 위해 본인의 부서, 직급 등을 확인 후 선택해 주세요.`
                     : `검색된 교직원 정보가 본인이 맞는지 확인 후 선택해 주세요.`}
                 </p>
               </div>
@@ -374,24 +376,24 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                     key={staff.id}
                     className="p-3.5 border border-slate-200 rounded-lg bg-white hover:border-[#1a5b6d] hover:bg-slate-50/70 transition-all flex items-center justify-between gap-3"
                   >
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
                       {staff.code && (
-                        <span className="px-2 py-0.5 bg-slate-800 text-white rounded font-mono text-xs font-semibold">
-                          고유번호: {staff.code}
+                        <span className="px-2 py-0.5 bg-slate-800 text-white rounded font-mono text-xs font-semibold shrink-0">
+                          {staff.code}
                         </span>
                       )}
-                      <span className="text-sm font-bold text-slate-900">
+                      <span className="text-sm font-bold text-slate-900 shrink-0">
                         {staff.name} 선생님
                       </span>
-                      <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        소속: {staff.department}
+                      <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                        {staff.department || ''}{staff.position ? ` · ${staff.position}` : ''}
                       </span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleSelectCandidate(staff)}
-                      className="px-4 py-2 bg-[#1a5b6d] hover:bg-[#144857] active:bg-[#0f3642] text-white text-xs font-medium rounded-md transition-colors cursor-pointer shrink-0"
+                      className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#1a5b6d] hover:bg-[#144857] active:bg-[#0f3642] text-white text-xs font-medium rounded-md transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                     >
                       선택 (서명 진행)
                     </button>
@@ -441,6 +443,27 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             </form>
           )}
         </div>
+
+        {/* Standard User-Requested Footer */}
+        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
+          <div>Version 1.0.0 (2026)</div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+            >
+              개인정보처리방침
+            </button>
+          </div>
+          <div>© INBIGO. All Rights Reserved.</div>
+        </footer>
+
+        {/* Privacy Policy Modal */}
+        <PrivacyPolicyModal
+          isOpen={showPrivacyModal}
+          onClose={() => setShowPrivacyModal(false)}
+        />
       </div>
     );
   }
@@ -453,13 +476,13 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
     return (
       <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 flex flex-col">
         {/* Top Bar */}
-        <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+        <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4 gap-2">
+          <h1 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight shrink-0">
             전자서명
           </h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-600 font-medium">
-              서명자: <strong>{currentTeacher.name}</strong> 선생님
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-xs text-slate-600 font-medium truncate">
+              <strong>{currentTeacher.name}</strong> 선생님
               {currentTeacher.code && (
                 <span className="ml-1 text-slate-400 font-mono">[{currentTeacher.code}]</span>
               )}
@@ -467,7 +490,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             <button
               type="button"
               onClick={() => setActiveSigningTraining(null)}
-              className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
+              className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer shrink-0 whitespace-nowrap"
             >
               목록으로
             </button>
@@ -534,9 +557,6 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Helpful Helper Text */}
-            
           </div>
 
           {/* Submit Actions */}
@@ -558,6 +578,27 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Standard User-Requested Footer */}
+        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
+          <div>Version 1.0.0 (2026)</div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+            >
+              개인정보처리방침
+            </button>
+          </div>
+          <div>© INBIGO. All Rights Reserved.</div>
+        </footer>
+
+        {/* Privacy Policy Modal */}
+        <PrivacyPolicyModal
+          isOpen={showPrivacyModal}
+          onClose={() => setShowPrivacyModal(false)}
+        />
       </div>
     );
   }
@@ -566,26 +607,17 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 flex flex-col">
       {/* Top Bar */}
-      <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+      <div className="max-w-3xl w-full mx-auto flex items-center justify-between mb-4 gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
           교직원 연수 전자서명
         </h1>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center shrink-0">
           <button
             type="button"
             onClick={handleLogout}
-            className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+            className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-300 hover:bg-slate-50 px-2.5 sm:px-3 py-1.5 rounded-lg shadow-2xs font-medium cursor-pointer transition-colors whitespace-nowrap"
           >
-            선생님 변경 (로그아웃)
-          </button>
-          <span className="text-slate-300 text-xs">|</span>
-          <button
-            type="button"
-            onClick={onSwitchToAdmin}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
-          >
-            <Lock className="w-3.5 h-3.5 text-slate-500" />
-            <span>관리자 로그인</span>
+            선생님 변경
           </button>
         </div>
       </div>
@@ -600,10 +632,10 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               </h2>
               {currentTeacher.code && (
                 <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono text-xs font-semibold border border-slate-200">
-                  번호: {currentTeacher.code}
+                  {currentTeacher.code}
                 </span>
               )}
-              <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
+              <span className="text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
                 {currentTeacher.department} {currentTeacher.position ? `· ${currentTeacher.position}` : ''}
               </span>
             </div>
@@ -702,6 +734,27 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Standard User-Requested Footer */}
+      <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
+        <div>Version 1.0.0 (2026)</div>
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowPrivacyModal(true)}
+            className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+          >
+            개인정보처리방침
+          </button>
+        </div>
+        <div>© INBIGO. All Rights Reserved.</div>
+      </footer>
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </div>
   );
 };

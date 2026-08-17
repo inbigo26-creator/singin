@@ -142,6 +142,7 @@ export const AdminTrainingList: React.FC<AdminTrainingListProps> = ({
         <div className="space-y-4">
           {filteredTrainings.map((training) => {
             const signedCount = training.attendanceCount || 0;
+            const totalCount = training.totalTargetCount || training.targetStaffIds?.length || 0;
 
             return (
               <div
@@ -176,7 +177,7 @@ export const AdminTrainingList: React.FC<AdminTrainingListProps> = ({
                     <span>대상: {training.target || '전 교직원'}</span>
                     <span className="text-slate-300">|</span>
                     <span className="font-semibold text-[#1a5b6d]">
-                      서명 {signedCount}명 완료
+                      서명 {signedCount}{totalCount > 0 ? `/${totalCount}` : ''}명 완료
                     </span>
                   </div>
                 </div>
@@ -189,7 +190,7 @@ export const AdminTrainingList: React.FC<AdminTrainingListProps> = ({
                     className="px-3.5 py-1.5 bg-[#1a5b6d] hover:bg-[#144857] text-white text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Users className="w-3.5 h-3.5" />
-                    <span>서명현황 ({signedCount})</span>
+                    <span>서명현황</span>
                   </button>
 
                   <button

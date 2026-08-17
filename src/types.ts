@@ -53,3 +53,10 @@ export interface PrintSettings {
   showMemo: boolean;
   schoolName: string;
 }
+
+export interface PrivacyPolicyConfig {
+  title?: string;
+  version: string;
+  updatedAt: string;
+  content: string;
+}

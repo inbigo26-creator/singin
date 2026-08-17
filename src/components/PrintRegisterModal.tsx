@@ -14,6 +14,7 @@ import {
 import { Training, Attendance, PrintSettings } from '../types';
 import { PrintRegisterDocument } from './PrintRegisterDocument';
 import { updateTrainingNotes, compareStaffNumber } from '../api';
+import { executePrintDocument } from '../utils/printHtmlGenerator';
 
 interface PrintRegisterModalProps {
   isOpen: boolean;
@@ -66,108 +67,13 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
   };
 
   const handlePrint = () => {
-    const printElement = document.getElementById('printable-register-sheet');
-    if (!printElement) {
-      window.print();
-      return;
-    }
-
-    // Remove any previous print iframe
-    const oldFrame = document.getElementById('a4-print-isolated-iframe');
-    if (oldFrame) {
-      oldFrame.remove();
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'a4-print-isolated-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
-
-    const iframeDoc = iframe.contentWindow?.document;
-    if (!iframeDoc) {
-      window.print();
-      return;
-    }
-
-    // Collect parent stylesheets & Tailwind styles
-    const styles: string[] = [];
-    document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-      styles.push(node.outerHTML);
-    });
-
-    const customPrintCss = `
-      <style>
-        @page {
-          size: A4 portrait;
-          margin: 8mm 8mm 8mm 8mm;
-        }
-        * {
-          box-sizing: border-box;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          background: #ffffff !important;
-          color: #000000 !important;
-          font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
-        }
-        #printable-register-sheet {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin: 0 auto !important;
-          padding: 0 !important;
-          border: none !important;
-          box-shadow: none !important;
-          background: #ffffff !important;
-        }
-        table {
-          border-collapse: collapse !important;
-          width: 100% !important;
-        }
-        th, td {
-          border-color: #000000 !important;
-        }
-      </style>
-    `;
-
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html lang="ko">
-      <head>
-        <meta charset="UTF-8">
-        <title>${training.title} 연수 서명부</title>
-        ${styles.join('\n')}
-        ${customPrintCss}
-      </head>
-      <body style="background: #ffffff; margin: 0; padding: 0;">
-        <div style="width: 100%; max-width: 210mm; margin: 0 auto; background: #ffffff;">
-          ${printElement.outerHTML}
-        </div>
-      </body>
-      </html>
-    `);
-    iframeDoc.close();
-
-    // Allow resources/images/fonts to render, then invoke print
-    setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (err) {
-        console.error('Iframe print error, falling back to window.print():', err);
-        window.print();
-      }
-    }, 200);
+    const currentTrainingWithNotes = {
+      ...training,
+      notes: localNotes,
+    };
+    executePrintDocument(currentTrainingWithNotes, attendances, settings);
   };
+
 
   const handleExportCSV = () => {
     const sortedAttendances = [...attendances].sort((a, b) => {

@@ -16,6 +16,7 @@ import { QRModal } from './components/QRModal';
 import { PrintRegisterModal } from './components/PrintRegisterModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminChangePasswordModal } from './components/AdminChangePasswordModal';
+import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
 import { AlertCircle } from 'lucide-react';
 
 export default function App() {
@@ -64,6 +65,9 @@ export default function App() {
   const [selectedTrainingForPrint, setSelectedTrainingForPrint] = useState<Training | null>(null);
   const [attendancesForPrint, setAttendancesForPrint] = useState<Attendance[]>([]);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Privacy Policy Modal
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   // Parse URL on load
   useEffect(() => {
@@ -287,10 +291,18 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="print:hidden border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-400">
-        <p>
-          {schoolConfig.schoolName || '인천비즈니스고등학교'} 교직원 연수 전자서명 관리 시스템
-        </p>
+      <footer className="print:hidden border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-400 space-y-1">
+        <div>Version 1.0.0 (2026)</div>
+        <div>
+          <button
+            type="button"
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+          >
+            개인정보처리방침
+          </button>
+        </div>
+        <div>© INBIGO. All Rights Reserved.</div>
       </footer>
 
       {/* Create / Edit Training Modal */}
@@ -359,6 +371,13 @@ export default function App() {
       <AdminChangePasswordModal
         isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
+      />
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+        isAdmin={isAdminAuthenticated}
       />
     </div>
   );

@@ -617,7 +617,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
 
                         {staff.code && (
                           <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded font-mono text-[10px] font-semibold border border-slate-200">
-                            번호: {staff.code}
+                            {staff.code}
                           </span>
                         )}
                         <span className="font-bold text-slate-900">{staff.name}</span>
