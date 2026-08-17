@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, PenTool, RotateCcw } from 'lucide-react';
+import { Lock, PenTool, RotateCcw, LogOut } from 'lucide-react';
 import { Staff, Training } from '../types';
 import { trimAndOptimizeSignature } from '../utils/signatureUtils';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
@@ -331,14 +331,24 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               교직원 연수 전자서명
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={onSwitchToAdmin}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
-          >
-            <Lock className="w-3.5 h-3.5 text-slate-500" />
-            <span>관리자 로그인</span>
-          </button>
+          {(!candidates || candidates.length === 0) ? (
+            <button
+              type="button"
+              onClick={onSwitchToAdmin}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>관리자 로그인</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCandidates(null)}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-600 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              다시 입력
+            </button>
+          )}
         </div>
 
         {/* Card Container */}
@@ -615,9 +625,11 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
           <button
             type="button"
             onClick={handleLogout}
-            className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-300 hover:bg-slate-50 px-2.5 sm:px-3 py-1.5 rounded-lg shadow-2xs font-medium cursor-pointer transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 sm:px-3 py-1.5 rounded-lg shadow-2xs font-semibold cursor-pointer transition-colors whitespace-nowrap"
+            title="선생님 로그아웃"
           >
-            선생님 변경
+            <LogOut className="w-3.5 h-3.5" />
+            <span>선생님 로그아웃</span>
           </button>
         </div>
       </div>

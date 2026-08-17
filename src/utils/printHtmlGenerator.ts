@@ -80,7 +80,7 @@ export function generateStandalonePrintHtml(
   const totalCount = displayItems.length;
   const isTwoColumns =
     settings.layoutMode === '2col' ||
-    (settings.layoutMode === 'auto' && totalCount > 22);
+    (settings.layoutMode === 'auto' && totalCount > 15);
 
   const rowsPerCol = isTwoColumns ? Math.ceil(totalCount / 2) : totalCount;
 
@@ -94,7 +94,7 @@ export function generateStandalonePrintHtml(
   let metaMarginBottomMm = '4mm';
 
   if (isTwoColumns) {
-    if (rowsPerCol <= 14) {
+    if (rowsPerCol <= 12) {
       rowHeightMm = '9mm';
       sigMaxHeightMm = '7mm';
       fontSizePt = '9pt';
@@ -102,15 +102,15 @@ export function generateStandalonePrintHtml(
       metaPadMm = '1.8mm';
       titleMarginBottomMm = '3.5mm';
       metaMarginBottomMm = '3mm';
-    } else if (rowsPerCol <= 20) {
-      rowHeightMm = '7.5mm';
-      sigMaxHeightMm = '5.8mm';
+    } else if (rowsPerCol <= 18) {
+      rowHeightMm = '7.8mm';
+      sigMaxHeightMm = '6mm';
       fontSizePt = '8.5pt';
       headerPadMm = '1.2mm';
       metaPadMm = '1.5mm';
       titleMarginBottomMm = '3mm';
       metaMarginBottomMm = '2.5mm';
-    } else if (rowsPerCol <= 28) {
+    } else if (rowsPerCol <= 25) {
       rowHeightMm = '6.2mm';
       sigMaxHeightMm = '4.8mm';
       fontSizePt = '8pt';
@@ -118,7 +118,7 @@ export function generateStandalonePrintHtml(
       metaPadMm = '1.2mm';
       titleMarginBottomMm = '2.5mm';
       metaMarginBottomMm = '2mm';
-    } else if (rowsPerCol <= 36) {
+    } else if (rowsPerCol <= 34) {
       rowHeightMm = '5.2mm';
       sigMaxHeightMm = '4mm';
       fontSizePt = '7.5pt';
@@ -136,11 +136,11 @@ export function generateStandalonePrintHtml(
       metaMarginBottomMm = '1.5mm';
     }
   } else {
-    if (rowsPerCol <= 12) {
+    if (rowsPerCol <= 10) {
       rowHeightMm = '10mm';
       sigMaxHeightMm = '8mm';
       fontSizePt = '10pt';
-    } else if (rowsPerCol <= 18) {
+    } else if (rowsPerCol <= 15) {
       rowHeightMm = '8.5mm';
       sigMaxHeightMm = '6.5mm';
       fontSizePt = '9.5pt';

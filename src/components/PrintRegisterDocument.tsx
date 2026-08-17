@@ -91,10 +91,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
 
   const totalCount = displayItems.length;
 
-  // Determine whether to use 1 column or 2 columns based on settings or count threshold (> 22)
+  // Determine whether to use 1 column or 2 columns based on settings or count threshold (> 15)
+  // 16 or more attendees will automatically format into 2 columns for a clean, non-overflowing single A4 page
   const isTwoColumns =
     settings.layoutMode === '2col' ||
-    (settings.layoutMode === 'auto' && totalCount > 22);
+    (settings.layoutMode === 'auto' && totalCount > 15);
 
   // Dynamic row sizing & font scaling to guarantee 1 page fitting
   const rowsPerCol = isTwoColumns ? Math.ceil(totalCount / 2) : totalCount;
@@ -108,44 +109,44 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   let metaMarginBottom = 'mb-3.5';
 
   if (isTwoColumns) {
-    if (rowsPerCol <= 14) {
-      // <= 28 people
+    if (rowsPerCol <= 12) {
+      // <= 24 people (e.g. 22 attendees -> 11 rows per col)
       rowHeightClass = 'h-8.5';
       signatureImgMaxHeight = 'max-h-7';
       cellTextSize = 'text-xs';
       tableHeaderHeight = 'py-1.5';
       metaTablePadding = 'py-1.5 px-3';
-      titleMarginBottom = 'mb-3.5 pb-2';
+      titleMarginBottom = 'mb-3 pb-2';
       metaMarginBottom = 'mb-3';
-    } else if (rowsPerCol <= 20) {
-      // 29 ~ 40 people
-      rowHeightClass = 'h-7';
-      signatureImgMaxHeight = 'max-h-5.5';
+    } else if (rowsPerCol <= 18) {
+      // 25 ~ 36 people
+      rowHeightClass = 'h-7.5';
+      signatureImgMaxHeight = 'max-h-6';
       cellTextSize = 'text-[11px]';
       tableHeaderHeight = 'py-1';
       metaTablePadding = 'py-1 px-2.5';
       titleMarginBottom = 'mb-2.5 pb-1.5';
       metaMarginBottom = 'mb-2';
-    } else if (rowsPerCol <= 28) {
-      // 41 ~ 56 people
-      rowHeightClass = 'h-[23px]';
-      signatureImgMaxHeight = 'max-h-[17px]';
+    } else if (rowsPerCol <= 25) {
+      // 37 ~ 50 people
+      rowHeightClass = 'h-6';
+      signatureImgMaxHeight = 'max-h-5';
       cellTextSize = 'text-[10px]';
       tableHeaderHeight = 'py-0.5';
       metaTablePadding = 'py-0.5 px-2';
       titleMarginBottom = 'mb-2 pb-1';
       metaMarginBottom = 'mb-1.5';
-    } else if (rowsPerCol <= 36) {
-      // 57 ~ 72 people
-      rowHeightClass = 'h-[19px]';
-      signatureImgMaxHeight = 'max-h-[14px]';
+    } else if (rowsPerCol <= 34) {
+      // 51 ~ 68 people
+      rowHeightClass = 'h-[20px]';
+      signatureImgMaxHeight = 'max-h-[15px]';
       cellTextSize = 'text-[9px]';
       tableHeaderHeight = 'py-0';
       metaTablePadding = 'py-0.5 px-2';
       titleMarginBottom = 'mb-1.5 pb-1';
       metaMarginBottom = 'mb-1';
     } else {
-      // 73+ people
+      // 69+ people
       rowHeightClass = 'h-[16px]';
       signatureImgMaxHeight = 'max-h-[12px]';
       cellTextSize = 'text-[8px]';
@@ -155,17 +156,17 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
       metaMarginBottom = 'mb-1';
     }
   } else {
-    if (rowsPerCol <= 12) {
-      rowHeightClass = 'h-10';
-      signatureImgMaxHeight = 'max-h-8';
+    if (rowsPerCol <= 10) {
+      rowHeightClass = 'h-10 sm:h-11';
+      signatureImgMaxHeight = 'max-h-8 sm:max-h-9';
       cellTextSize = 'text-xs';
-    } else if (rowsPerCol <= 18) {
-      rowHeightClass = 'h-8';
-      signatureImgMaxHeight = 'max-h-6';
+    } else if (rowsPerCol <= 15) {
+      rowHeightClass = 'h-8 sm:h-9';
+      signatureImgMaxHeight = 'max-h-6 sm:max-h-7';
       cellTextSize = 'text-xs';
     } else {
       rowHeightClass = 'h-7';
-      signatureImgMaxHeight = 'max-h-5';
+      signatureImgMaxHeight = 'max-h-5.5';
       cellTextSize = 'text-[11px]';
     }
   }
@@ -183,10 +184,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   return (
     <div
       id="printable-register-sheet"
-      className="bg-white text-black font-sans w-full max-w-[210mm] mx-auto px-6 pt-10 pb-6 sm:px-10 sm:pt-14 sm:pb-8 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-md"
+      className="bg-white text-black font-sans w-full max-w-[210mm] min-h-[297mm] h-auto mx-auto px-6 pt-8 pb-8 sm:px-10 sm:pt-10 sm:pb-10 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-lg rounded-sm"
       style={{
         width: '100%',
         maxWidth: '210mm',
+        minHeight: '297mm',
         backgroundColor: '#ffffff',
         color: '#000000',
       }}
