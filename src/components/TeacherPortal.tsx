@@ -455,18 +455,20 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         </div>
 
         {/* Standard User-Requested Footer */}
-        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
-          <div>Version 1.0.0 (2026)</div>
-          <div>
+        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 text-slate-500">
+            <span>Version 1.0.0 (2026)</span>
+            <span className="hidden sm:inline text-slate-300">·</span>
             <button
               type="button"
               onClick={() => setShowPrivacyModal(true)}
-              className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+              className="text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer transition-colors"
             >
               개인정보처리방침
             </button>
+            <span className="hidden sm:inline text-slate-300">·</span>
+            <span>© INBIGO. All Rights Reserved.</span>
           </div>
-          <div>© INBIGO. All Rights Reserved.</div>
         </footer>
 
         {/* Privacy Policy Modal */}
@@ -590,18 +592,20 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         </div>
 
         {/* Standard User-Requested Footer */}
-        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
-          <div>Version 1.0.0 (2026)</div>
-          <div>
+        <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 text-slate-500">
+            <span>Version 1.0.0 (2026)</span>
+            <span className="hidden sm:inline text-slate-300">·</span>
             <button
               type="button"
               onClick={() => setShowPrivacyModal(true)}
-              className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+              className="text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer transition-colors"
             >
               개인정보처리방침
             </button>
+            <span className="hidden sm:inline text-slate-300">·</span>
+            <span>© INBIGO. All Rights Reserved.</span>
           </div>
-          <div>© INBIGO. All Rights Reserved.</div>
         </footer>
 
         {/* Privacy Policy Modal */}
@@ -748,18 +752,20 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
       </div>
 
       {/* Standard User-Requested Footer */}
-      <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400 space-y-1">
-        <div>Version 1.0.0 (2026)</div>
-        <div>
+      <footer className="mt-auto pt-8 pb-4 text-center text-xs text-slate-400">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 text-slate-500">
+          <span>Version 1.0.0 (2026)</span>
+          <span className="hidden sm:inline text-slate-300">·</span>
           <button
             type="button"
             onClick={() => setShowPrivacyModal(true)}
-            className="text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+            className="text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer transition-colors"
           >
             개인정보처리방침
           </button>
+          <span className="hidden sm:inline text-slate-300">·</span>
+          <span>© INBIGO. All Rights Reserved.</span>
         </div>
-        <div>© INBIGO. All Rights Reserved.</div>
       </footer>
 
       {/* Privacy Policy Modal */}
