@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Printer,
   X,
@@ -47,6 +47,13 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState('');
 
+  // Synchronize localNotes strictly when training changes
+  useEffect(() => {
+    setLocalNotes(training.notes || {});
+    setEditingStaffId(null);
+    setEditingNoteText('');
+  }, [training.id, training.notes]);
+
   if (!isOpen) return null;
 
   const targetStaff = training.targetStaff || [];
@@ -91,7 +98,7 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
       `"${a.name.replace(/"/g, '""')}"`,
       `"${(a.department || '').replace(/"/g, '""')}"`,
       `"${new Date(a.signedAt).toLocaleString('ko-KR')}"`,
-      `"${(localNotes[a.id] || (a.staffId && localNotes[a.staffId]) || localNotes[a.name] || a.note || '').replace(/"/g, '""')}"`,
+      `"${((a.staffId && localNotes[a.staffId]) || localNotes[a.id] || localNotes[a.name] || '').replace(/"/g, '""')}"`,
     ]);
 
     const csvContent =

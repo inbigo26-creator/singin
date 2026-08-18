@@ -27,7 +27,7 @@ export function generateStandalonePrintHtml(
       const match = attendances.find(
         (a) => (a.staffId && a.staffId === staff.id) || a.name.trim() === staff.name.trim()
       );
-      const note = trainingNotes[staff.id] || trainingNotes[staff.name] || match?.note || '';
+      const note = trainingNotes[staff.id] || (match?.staffId && trainingNotes[match.staffId]) || (match?.id && trainingNotes[match.id]) || trainingNotes[staff.name] || '';
       return {
         id: staff.id,
         code: staff.code,
@@ -46,7 +46,7 @@ export function generateStandalonePrintHtml(
         (d) => (att.staffId && d.id === att.staffId) || d.name.trim() === att.name.trim()
       );
       if (!exists) {
-        const note = trainingNotes[att.id] || (att.staffId && trainingNotes[att.staffId]) || trainingNotes[att.name] || att.note || '';
+        const note = (att.staffId && trainingNotes[att.staffId]) || trainingNotes[att.id] || trainingNotes[att.name] || '';
         displayItems.push({
           id: att.id,
           code: undefined,
@@ -61,7 +61,7 @@ export function generateStandalonePrintHtml(
   } else {
     displayItems = attendances.map((a) => {
       const staffMatch = targetStaff.find((s) => (a.staffId && s.id === a.staffId) || s.name.trim() === a.name.trim());
-      const note = trainingNotes[a.id] || (a.staffId && trainingNotes[a.staffId]) || trainingNotes[a.name] || a.note || '';
+      const note = (a.staffId && trainingNotes[a.staffId]) || trainingNotes[a.id] || trainingNotes[a.name] || '';
       return {
         id: a.id,
         code: staffMatch?.code,

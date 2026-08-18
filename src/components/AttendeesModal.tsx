@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Printer,
@@ -39,6 +39,13 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
   const [noteInputValue, setNoteInputValue] = useState('');
   const [localNotes, setLocalNotes] = useState<Record<string, string>>(training.notes || {});
 
+  // Synchronize localNotes strictly when training changes
+  useEffect(() => {
+    setLocalNotes(training.notes || {});
+    setEditingNoteId(null);
+    setNoteInputValue('');
+  }, [training.id, training.notes]);
+
   if (!isOpen) return null;
 
   const targetStaff = training.targetStaff || [];
@@ -65,7 +72,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
       const match = attendances.find(
         (a) => (a.staffId && a.staffId === staff.id) || a.name.trim() === staff.name.trim()
       );
-      const note = localNotes[staff.id] || localNotes[staff.name] || match?.note || '';
+      const note = localNotes[staff.id] || (match?.staffId && localNotes[match.staffId]) || (match?.id && localNotes[match.id]) || localNotes[staff.name] || '';
       return {
         id: staff.id,
         code: staff.code,
@@ -86,9 +93,9 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
         (r) => (att.staffId && r.staffId === att.staffId) || r.name.trim() === att.name.trim()
       );
       if (!alreadyIn) {
-        const note = localNotes[att.id] || (att.staffId && localNotes[att.staffId]) || localNotes[att.name] || att.note || '';
+        const note = (att.staffId && localNotes[att.staffId]) || localNotes[att.id] || localNotes[att.name] || '';
         combinedRows.push({
-          id: att.id,
+          id: att.staffId || att.id,
           attendanceId: att.id,
           name: att.name,
           department: att.department || '교직원',
@@ -102,9 +109,9 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
     });
   } else {
     combinedRows = attendances.map((att) => {
-      const note = localNotes[att.id] || (att.staffId && localNotes[att.staffId]) || localNotes[att.name] || att.note || '';
+      const note = (att.staffId && localNotes[att.staffId]) || localNotes[att.id] || localNotes[att.name] || '';
       return {
-        id: att.id,
+        id: att.staffId || att.id,
         attendanceId: att.id,
         name: att.name,
         department: att.department || '교직원',
