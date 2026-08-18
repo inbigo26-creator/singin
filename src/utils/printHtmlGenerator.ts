@@ -82,6 +82,8 @@ export function generateStandalonePrintHtml(
     settings.layoutMode === '2col' ||
     (settings.layoutMode === 'auto' && totalCount > 15);
 
+  const noteRows = displayItems.filter((item) => item.note && item.note.trim().length > 0);
+
   const rowsPerCol = isTwoColumns ? Math.ceil(totalCount / 2) : totalCount;
 
   // Dynamic row sizing in millimeters & font sizes
@@ -274,7 +276,7 @@ export function generateStandalonePrintHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 20mm 10mm 10mm 10mm;
+      margin: 28mm 10mm 10mm 10mm;
     }
     * {
       box-sizing: border-box;
@@ -293,7 +295,7 @@ export function generateStandalonePrintHtml(
       width: 190mm;
       margin: 0 auto;
       background-color: #ffffff;
-      padding-top: 4mm;
+      padding-top: 6mm;
     }
     table {
       border-collapse: collapse;
@@ -368,6 +370,28 @@ export function generateStandalonePrintHtml(
     <div>
       ${tablesHtml}
     </div>
+
+    <!-- Notes Summary Box (Optional) -->
+    ${
+      settings.showMemo && noteRows.length > 0
+        ? `
+      <div style="margin-top: 3.5mm; border: 1.5px solid #000000; padding: 2mm 3mm; background-color: #f8fafc; font-size: ${fontSizePt};">
+        <div style="font-weight: bold; margin-bottom: 1mm; color: #000000;">비고 요약</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 2mm 5mm;">
+          ${noteRows
+            .map(
+              (n) => `
+            <span style="color: #1e293b;">
+              <span style="font-weight: bold; color: #000000;">${n.name}:</span> ${n.note}
+            </span>
+          `
+            )
+            .join('')}
+        </div>
+      </div>
+    `
+        : ''
+    }
   </div>
 
   <script>

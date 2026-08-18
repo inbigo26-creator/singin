@@ -152,7 +152,9 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
               }`}
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-              <span>비고 입력 ({Object.keys(localNotes).filter((k) => !!localNotes[k]).length})</span>
+              <span>
+                비고 입력 ({staffListForNotes.filter((s) => !!(localNotes[s.id] || (s.name && localNotes[s.name]))).length})
+              </span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showNotesManager ? 'rotate-180' : ''}`} />
             </button>
 
@@ -297,7 +299,7 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
         {/* Collapsible Print Settings Bar (Hidden in Print) */}
         {showSettingsPanel && (
           <div className="print:hidden bg-slate-50 border-b border-slate-200 p-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               {/* Layout Mode */}
               <div className="bg-white p-3 rounded-lg border border-slate-200">
                 <label className="font-bold text-slate-700 block mb-2 flex items-center gap-1.5">
@@ -339,23 +341,6 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
                     2열 강제
                   </button>
                 </div>
-              </div>
-
-              {/* Approval Line Toggle */}
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <label className="font-bold text-slate-700 block mb-2 flex items-center gap-1.5">
-                  <SquareCheck className="w-3.5 h-3.5 text-slate-500" />
-                  <span>결재란 (상단 우측)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer mb-1.5">
-                  <input
-                    type="checkbox"
-                    checked={settings.showApprovalLine}
-                    onChange={(e) => setSettings({ ...settings, showApprovalLine: e.target.checked })}
-                    className="rounded text-[#1a5b6d] focus:ring-[#1a5b6d] w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-slate-700">결재란(담당-부장-교감-교장) 표시</span>
-                </label>
               </div>
 
               {/* School Header & Memo */}

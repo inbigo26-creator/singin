@@ -181,10 +181,13 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
 
   const schoolDisplayName = training.schoolName || settings.schoolName || '인천비즈니스고등학교';
 
+  // Filter notes for summary: only include rows that have a non-empty note
+  const noteRows = displayItems.filter((item) => item.note && item.note.trim().length > 0);
+
   return (
     <div
       id="printable-register-sheet"
-      className="bg-white text-black font-sans w-full max-w-[210mm] min-h-[297mm] h-auto mx-auto px-6 pt-14 pb-8 sm:px-10 sm:pt-16 sm:pb-10 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-lg rounded-sm"
+      className="bg-white text-black font-sans w-full max-w-[210mm] min-h-[297mm] h-auto mx-auto px-6 pt-20 pb-8 sm:px-10 sm:pt-24 sm:pb-10 print:p-0 box-border border border-slate-300 print:border-none print:shadow-none shadow-lg rounded-sm"
       style={{
         width: '100%',
         maxWidth: '210mm',
@@ -193,7 +196,7 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
         color: '#000000',
       }}
     >
-      <div className="w-full flex flex-col pt-3 sm:pt-4 print:pt-4">
+      <div className="w-full flex flex-col pt-5 sm:pt-6 print:pt-6">
         {/* Top Header - School Name and Training Title */}
         <div className={`text-center ${titleMarginBottom} border-b-2 border-black ${contentWidthClass} mx-auto w-full`}>
           {settings.showSchoolHeader && (
@@ -379,6 +382,20 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Notes Summary Box (Optional) */}
+        {settings.showMemo && noteRows.length > 0 && (
+          <div className={`mt-3.5 border border-black p-2.5 bg-slate-50 text-xs ${contentWidthClass} mx-auto w-full`}>
+            <div className="font-bold text-black mb-1">비고 요약</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {noteRows.map((n, idx) => (
+                <span key={n.id || idx} className="text-slate-800">
+                  <span className="font-bold text-black">{n.name}:</span> {n.note}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
