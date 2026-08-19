@@ -177,6 +177,11 @@ export const AdminTrainingList: React.FC<AdminTrainingListProps> = ({
                     <span className="font-bold text-[#1a5b6d] bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 shrink-0">
                       서명 {signedCount}{totalCount > 0 ? `/${totalCount}` : ''}명 완료
                     </span>
+                    {totalCount > 0 && totalCount > signedCount && (
+                      <span className="font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shrink-0">
+                        미서명 {totalCount - signedCount}명
+                      </span>
+                    )}
                   </div>
                 </div>
 

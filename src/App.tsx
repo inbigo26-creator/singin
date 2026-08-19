@@ -179,7 +179,10 @@ export default function App() {
   const handleOpenAttendees = async (training: Training) => {
     try {
       const data = await fetchTraining(training.id);
-      setSelectedTrainingForAttendees(data.training);
+      setSelectedTrainingForAttendees({
+        ...data.training,
+        targetStaff: data.targetStaff,
+      });
       setAttendancesForModal(data.attendances);
       setIsAttendeesModalOpen(true);
     } catch (err: any) {
@@ -191,7 +194,10 @@ export default function App() {
     if (!selectedTrainingForAttendees) return;
     try {
       const data = await fetchTraining(selectedTrainingForAttendees.id);
-      setSelectedTrainingForAttendees(data.training);
+      setSelectedTrainingForAttendees({
+        ...data.training,
+        targetStaff: data.targetStaff,
+      });
       setAttendancesForModal(data.attendances);
       loadInitialData();
     } catch (err: any) {

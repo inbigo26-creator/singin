@@ -8,10 +8,11 @@ import {
   Sparkles,
   Maximize2,
   Edit3,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
-import { Training, Attendance } from '../types';
-import { deleteAttendance, seedBulkAttendees, clearAllAttendances, updateTrainingNotes, compareStaffNumber } from '../api';
+import { Training, Attendance, Staff } from '../types';
+import { deleteAttendance, seedBulkAttendees, clearAllAttendances, updateTrainingNotes, compareStaffNumber, fetchStaff } from '../api';
 
 interface AttendeesModalProps {
   isOpen: boolean;
@@ -38,17 +39,36 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteInputValue, setNoteInputValue] = useState('');
   const [localNotes, setLocalNotes] = useState<Record<string, string>>(training.notes || {});
+  const [loadedStaff, setLoadedStaff] = useState<Staff[]>(training.targetStaff || []);
 
-  // Synchronize localNotes strictly when training changes
+  // Synchronize localNotes & targetStaff when training changes
   useEffect(() => {
     setLocalNotes(training.notes || {});
     setEditingNoteId(null);
     setNoteInputValue('');
-  }, [training.id, training.notes]);
+
+    if (training.targetStaff && training.targetStaff.length > 0) {
+      setLoadedStaff(training.targetStaff);
+    } else {
+      // Fallback: fetch all staff and filter by targetStaffIds if needed
+      fetchStaff()
+        .then((allStaff) => {
+          if (training.targetStaffIds && training.targetStaffIds.length > 0) {
+            const matched = training.targetStaffIds
+              .map((id) => allStaff.find((s) => s.id === id))
+              .filter((s): s is Staff => !!s);
+            setLoadedStaff(matched.length > 0 ? matched : allStaff);
+          } else {
+            setLoadedStaff(allStaff);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [training.id, training.notes, training.targetStaff, training.targetStaffIds]);
 
   if (!isOpen) return null;
 
-  const targetStaff = training.targetStaff || [];
+  const targetStaff = loadedStaff.length > 0 ? loadedStaff : (training.targetStaff || []);
   const hasDesignatedStaff = targetStaff.length > 0;
 
   interface StaffAttendanceRow {
@@ -129,6 +149,7 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
 
   const signedCount = combinedRows.filter((r) => r.isSigned).length;
   const totalCount = combinedRows.length;
+  const unsignedCount = totalCount - signedCount;
   const progressPercent = totalCount > 0 ? Math.round((signedCount / totalCount) * 100) : 0;
 
   const filteredRows = combinedRows.filter((row) => {
@@ -247,10 +268,21 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
 
         {/* Progress & Stat Header */}
         <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-slate-600 font-medium">
               서명 완료: <strong className="text-[#1a5b6d] font-bold">{signedCount}</strong> / {totalCount}명 ({progressPercent}%)
             </span>
+            {unsignedCount > 0 ? (
+              <span className="bg-amber-100 text-amber-900 border border-amber-300 font-semibold px-2 py-0.5 rounded-full text-[11px] flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 text-amber-700" />
+                <span>미서명 {unsignedCount}명</span>
+              </span>
+            ) : totalCount > 0 ? (
+              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold px-2 py-0.5 rounded-full text-[11px] flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                <span>전원 서명 완료</span>
+              </span>
+            ) : null}
           </div>
 
           {/* Quick Mock Actions */}
@@ -319,13 +351,15 @@ export const AttendeesModal: React.FC<AttendeesModalProps> = ({
             <button
               type="button"
               onClick={() => setFilterMode('unsigned')}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
                 filterMode === 'unsigned'
-                  ? 'bg-slate-700 text-white font-medium'
+                  ? 'bg-amber-600 text-white font-semibold'
+                  : unsignedCount > 0
+                  ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-medium'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              미서명 ({totalCount - signedCount})
+              <span>미서명 ({unsignedCount})</span>
             </button>
           </div>
         </div>

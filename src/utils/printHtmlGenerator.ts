@@ -177,6 +177,19 @@ export function generateStandalonePrintHtml(
     `;
   }
 
+  // Dynamic styling for long department / affiliation text
+  const getDeptStyle = (dept?: string) => {
+    const len = dept ? dept.trim().length : 0;
+    if (len >= 16) {
+      return `font-size: ${isTwoColumns ? '6pt' : '7pt'}; letter-spacing: -0.5px; line-height: 1.1;`;
+    } else if (len >= 13) {
+      return `font-size: ${isTwoColumns ? '6.8pt' : '7.8pt'}; letter-spacing: -0.3px; line-height: 1.15;`;
+    } else if (len >= 9) {
+      return `font-size: ${isTwoColumns ? '7.5pt' : '8.5pt'}; letter-spacing: -0.15px; line-height: 1.2;`;
+    }
+    return `font-size: ${fontSizePt}; line-height: 1.2;`;
+  };
+
   // Generate Table Row HTML
   const buildRowHtml = (item: PrintableItem, num: number) => {
     const sigCell = item.signature
@@ -188,7 +201,7 @@ export function generateStandalonePrintHtml(
         <td style="border-right: 1px solid #000000; font-weight: bold; text-align: center; font-size: ${fontSizePt}; padding: 0 1px;">
           ${num}
         </td>
-        <td style="border-right: 1px solid #000000; text-align: center; font-size: ${fontSizePt}; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+        <td style="border-right: 1px solid #000000; text-align: center; ${getDeptStyle(item.department)} padding: 0 1.5px; overflow: hidden; white-space: nowrap;">
           ${item.department || '-'}
         </td>
         <td style="border-right: 1px solid #000000; font-weight: bold; text-align: center; font-size: ${fontSizePt}; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
@@ -212,11 +225,11 @@ export function generateStandalonePrintHtml(
       <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000000; text-align: center; table-layout: fixed;">
         <thead>
           <tr style="background-color: #f1f5f9; border-bottom: 1.5px solid #000000; font-size: ${fontSizePt}; font-weight: bold;">
-            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 10%;">연번</th>
-            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">소속 / 직위</th>
-            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 18%;">성명</th>
+            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 8%;">연번</th>
+            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 36%;">소속 / 직위</th>
+            <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 16%;">성명</th>
             <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">서명</th>
-            <th style="padding: ${headerPadMm} 0; width: 20%;">비고</th>
+            <th style="padding: ${headerPadMm} 0; width: 14%;">비고</th>
           </tr>
         </thead>
         <tbody>
@@ -237,11 +250,11 @@ export function generateStandalonePrintHtml(
           <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000000; text-align: center; table-layout: fixed;">
             <thead>
               <tr style="background-color: #f1f5f9; border-bottom: 1.5px solid #000000; font-size: ${fontSizePt}; font-weight: bold;">
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 11%;">연번</th>
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">소속 / 직위</th>
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 19%;">성명</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 9%;">연번</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 35%;">소속 / 직위</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 17%;">성명</th>
                 <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">서명</th>
-                <th style="padding: ${headerPadMm} 0; width: 18%;">비고</th>
+                <th style="padding: ${headerPadMm} 0; width: 13%;">비고</th>
               </tr>
             </thead>
             <tbody>
@@ -255,11 +268,11 @@ export function generateStandalonePrintHtml(
           <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000000; text-align: center; table-layout: fixed;">
             <thead>
               <tr style="background-color: #f1f5f9; border-bottom: 1.5px solid #000000; font-size: ${fontSizePt}; font-weight: bold;">
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 11%;">연번</th>
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">소속 / 직위</th>
-                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 19%;">성명</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 9%;">연번</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 35%;">소속 / 직위</th>
+                <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 17%;">성명</th>
                 <th style="border-right: 1px solid #000000; padding: ${headerPadMm} 0; width: 26%;">서명</th>
-                <th style="padding: ${headerPadMm} 0; width: 18%;">비고</th>
+                <th style="padding: ${headerPadMm} 0; width: 13%;">비고</th>
               </tr>
             </thead>
             <tbody>

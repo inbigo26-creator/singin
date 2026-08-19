@@ -175,7 +175,20 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
   }
 
   // Matching container width for both top meta table & attendance grid
-  const contentWidthClass = isTwoColumns ? 'max-w-[188mm]' : 'max-w-[155mm]';
+  const contentWidthClass = isTwoColumns ? 'max-w-[188mm]' : 'max-w-[172mm]';
+
+  // Helper for dynamic font scaling on long department names
+  const getDeptStyle = (dept?: string) => {
+    const len = dept ? dept.trim().length : 0;
+    if (len >= 16) {
+      return { fontSize: isTwoColumns ? '8px' : '9px', letterSpacing: '-0.06em', lineHeight: '1.1' };
+    } else if (len >= 13) {
+      return { fontSize: isTwoColumns ? '9px' : '10px', letterSpacing: '-0.04em', lineHeight: '1.15' };
+    } else if (len >= 9) {
+      return { fontSize: isTwoColumns ? '10px' : '11px', letterSpacing: '-0.02em', lineHeight: '1.2' };
+    }
+    return {};
+  };
 
   // Split attendances for 2 columns (Left / Right)
   const midpoint = isTwoColumns ? Math.ceil(totalCount / 2) : totalCount;
@@ -255,11 +268,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
             <table className="w-full border-collapse border border-black text-center table-fixed">
               <thead>
                 <tr className={`bg-slate-100 border-b border-black ${cellTextSize} font-bold`}>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[10%] text-center`}>연번</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>소속 / 직위</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[18%] text-center`}>성명</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[8%] text-center`}>연번</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[36%] text-center`}>소속 / 직위</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[16%] text-center`}>성명</th>
                   <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>서명</th>
-                  <th className={`${tableHeaderHeight} w-[20%] text-center`}>비고</th>
+                  <th className={`${tableHeaderHeight} w-[14%] text-center`}>비고</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,7 +281,10 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
                     <td className={`border-r border-black ${cellTextSize} font-bold text-center`}>
                       {index + 1}
                     </td>
-                    <td className={`border-r border-black ${cellTextSize} px-2 text-center truncate`}>
+                    <td
+                      className={`border-r border-black ${cellTextSize} px-1.5 text-center whitespace-nowrap overflow-hidden`}
+                      style={getDeptStyle(item.department)}
+                    >
                       {item.department || '-'}
                     </td>
                     <td className={`border-r border-black ${cellTextSize} font-bold px-2 text-center`}>
@@ -302,11 +318,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
             <table className="w-full border-collapse border border-black text-center table-fixed">
               <thead>
                 <tr className={`bg-slate-100 border-b border-black ${cellTextSize} font-bold`}>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[11%] text-center`}>연번</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>소속 / 직위</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[19%] text-center`}>성명</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[9%] text-center`}>연번</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[35%] text-center`}>소속 / 직위</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[17%] text-center`}>성명</th>
                   <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>서명</th>
-                  <th className={`${tableHeaderHeight} w-[18%] text-center`}>비고</th>
+                  <th className={`${tableHeaderHeight} w-[13%] text-center`}>비고</th>
                 </tr>
               </thead>
               <tbody>
@@ -315,7 +331,10 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
                     <td className={`border-r border-black ${cellTextSize} font-bold text-center`}>
                       {idx + 1}
                     </td>
-                    <td className={`border-r border-black ${cellTextSize} px-1 text-center truncate`}>
+                    <td
+                      className={`border-r border-black ${cellTextSize} px-1 text-center whitespace-nowrap overflow-hidden`}
+                      style={getDeptStyle(item.department)}
+                    >
                       {item.department || '-'}
                     </td>
                     <td className={`border-r border-black ${cellTextSize} font-bold px-1 text-center truncate`}>
@@ -346,11 +365,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
             <table className="w-full border-collapse border border-black text-center table-fixed">
               <thead>
                 <tr className={`bg-slate-100 border-b border-black ${cellTextSize} font-bold`}>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[11%] text-center`}>연번</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>소속 / 직위</th>
-                  <th className={`border-r border-black ${tableHeaderHeight} w-[19%] text-center`}>성명</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[9%] text-center`}>연번</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[35%] text-center`}>소속 / 직위</th>
+                  <th className={`border-r border-black ${tableHeaderHeight} w-[17%] text-center`}>성명</th>
                   <th className={`border-r border-black ${tableHeaderHeight} w-[26%] text-center`}>서명</th>
-                  <th className={`${tableHeaderHeight} w-[18%] text-center`}>비고</th>
+                  <th className={`${tableHeaderHeight} w-[13%] text-center`}>비고</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,7 +378,10 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
                     <td className={`border-r border-black ${cellTextSize} font-bold text-center`}>
                       {midpoint + idx + 1}
                     </td>
-                    <td className={`border-r border-black ${cellTextSize} px-1 text-center truncate`}>
+                    <td
+                      className={`border-r border-black ${cellTextSize} px-1 text-center whitespace-nowrap overflow-hidden`}
+                      style={getDeptStyle(item.department)}
+                    >
                       {item.department || '-'}
                     </td>
                     <td className={`border-r border-black ${cellTextSize} font-bold px-1 text-center truncate`}>
