@@ -7,10 +7,11 @@ import {
   Square,
   ArrowUp,
   ArrowDown,
+  ArrowDownAZ,
   Sparkles,
 } from 'lucide-react';
 import { Training, Staff } from '../types';
-import { createTraining, updateTraining, fetchStaff } from '../api';
+import { createTraining, updateTraining, fetchStaff, compareStaffNumber } from '../api';
 
 interface TrainingFormModalProps {
   isOpen: boolean;
@@ -139,11 +140,22 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     setMemo(preset.memo);
   };
 
+  // Helper to sort a list of staff IDs by staff code/order/name
+  const sortStaffIdsByCode = (ids: string[]) => {
+    const idSet = new Set(ids);
+    return allStaff
+      .filter((s) => idSet.has(s.id))
+      .sort((a, b) => compareStaffNumber(a, b))
+      .map((s) => s.id);
+  };
+
   const handleToggleStaff = (staffId: string) => {
     if (selectedStaffIds.includes(staffId)) {
       setSelectedStaffIds(selectedStaffIds.filter((id) => id !== staffId));
     } else {
-      setSelectedStaffIds([...selectedStaffIds, staffId]);
+      // Add staff maintaining teacher code order by default
+      const combined = [...selectedStaffIds, staffId];
+      setSelectedStaffIds(sortStaffIdsByCode(combined));
     }
   };
 
@@ -153,6 +165,10 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
 
   const handleDeselectAllStaff = () => {
     setSelectedStaffIds([]);
+  };
+
+  const handleSortByStaffCode = () => {
+    setSelectedStaffIds(sortStaffIdsByCode(selectedStaffIds));
   };
 
   // Group departments: all before '행정계장', and group from '행정계장' onwards into '기타'
@@ -176,7 +192,8 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     const deptStaffIds = allStaff.filter((s) => s.department === dept).map((s) => s.id);
     const existing = new Set(selectedStaffIds);
     const newItems = deptStaffIds.filter((id) => !existing.has(id));
-    setSelectedStaffIds([...selectedStaffIds, ...newItems]);
+    const combined = [...selectedStaffIds, ...newItems];
+    setSelectedStaffIds(sortStaffIdsByCode(combined));
   };
 
   const handleSelectEtcDepartment = () => {
@@ -186,7 +203,8 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
       .map((s) => s.id);
     const existing = new Set(selectedStaffIds);
     const newItems = etcStaffIds.filter((id) => !existing.has(id));
-    setSelectedStaffIds([...selectedStaffIds, ...newItems]);
+    const combined = [...selectedStaffIds, ...newItems];
+    setSelectedStaffIds(sortStaffIdsByCode(combined));
   };
 
   // Reordering functions for print order
@@ -201,18 +219,31 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     setSelectedStaffIds(updated);
   };
 
-  const filteredStaff = allStaff.filter((s) => {
-    const matchesSearch =
-      s.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
-      s.department.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
-      (s.code && s.code.toLowerCase().includes(staffSearchTerm.toLowerCase())) ||
-      (s.position && s.position.toLowerCase().includes(staffSearchTerm.toLowerCase()));
-    
-    if (staffViewFilter === 'selectedOnly') {
-      return matchesSearch && selectedStaffIds.includes(s.id);
-    }
-    return matchesSearch;
-  });
+  let filteredStaff: Staff[] = [];
+  if (staffViewFilter === 'selectedOnly') {
+    // Show in explicit selected order
+    filteredStaff = selectedStaffIds
+      .map((id) => allStaff.find((s) => s.id === id))
+      .filter((s): s is Staff => !!s)
+      .filter((s) => {
+        return (
+          s.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
+          s.department.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
+          (s.code && s.code.toLowerCase().includes(staffSearchTerm.toLowerCase())) ||
+          (s.position && s.position.toLowerCase().includes(staffSearchTerm.toLowerCase()))
+        );
+      });
+  } else {
+    // Show entire staff list in natural staff code order
+    filteredStaff = allStaff.filter((s) => {
+      return (
+        s.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
+        s.department.toLowerCase().includes(staffSearchTerm.toLowerCase()) ||
+        (s.code && s.code.toLowerCase().includes(staffSearchTerm.toLowerCase())) ||
+        (s.position && s.position.toLowerCase().includes(staffSearchTerm.toLowerCase()))
+      );
+    });
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -465,10 +496,19 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
                     총 {allStaff.length}명 중 <span className="text-[#1a5b6d]">{selectedStaffIds.length}명</span> 서명 대상 지정됨
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    * 인쇄 서명부에는 선생님 번호(오름차순) 순서대로 자동 정렬되어 출력됩니다.
+                    * 기본적으로 선생님 연번(번호) 순으로 출력되며, '선택된 인원만'에서 ▲▼ 버튼으로 수동 순서 조정이 가능합니다.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSortByStaffCode}
+                    className="px-2.5 py-1 text-xs bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+                    title="선생님 연번(번호) 오름차순으로 순서 재정렬"
+                  >
+                    <ArrowDownAZ className="w-3.5 h-3.5 text-[#1a5b6d]" />
+                    <span>연번순 정렬</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleSelectAllStaff}

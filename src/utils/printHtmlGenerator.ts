@@ -75,7 +75,11 @@ export function generateStandalonePrintHtml(
     });
   }
 
-  displayItems.sort((a, b) => compareStaffNumber(a, b));
+  // If targetStaff is present, its order was already defined by targetStaffIds (sorted by code by default or manually adjusted by admin).
+  // Only sort by staff number if targetStaff was not explicitly defined.
+  if (targetStaff.length === 0) {
+    displayItems.sort((a, b) => compareStaffNumber(a, b));
+  }
 
   const totalCount = displayItems.length;
   const isTwoColumns =
@@ -370,28 +374,6 @@ export function generateStandalonePrintHtml(
     <div>
       ${tablesHtml}
     </div>
-
-    <!-- Notes Summary Box (Optional) -->
-    ${
-      settings.showMemo && noteRows.length > 0
-        ? `
-      <div style="margin-top: 3.5mm; border: 1.5px solid #000000; padding: 2mm 3mm; background-color: #f8fafc; font-size: ${fontSizePt};">
-        <div style="font-weight: bold; margin-bottom: 1mm; color: #000000;">비고 요약</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 2mm 5mm;">
-          ${noteRows
-            .map(
-              (n) => `
-            <span style="color: #1e293b;">
-              <span style="font-weight: bold; color: #000000;">${n.name}:</span> ${n.note}
-            </span>
-          `
-            )
-            .join('')}
-        </div>
-      </div>
-    `
-        : ''
-    }
   </div>
 
   <script>

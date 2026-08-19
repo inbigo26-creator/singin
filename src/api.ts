@@ -173,10 +173,10 @@ export async function fetchTraining(id: string): Promise<{
     const allStaff = await fetchStaff();
     let targetStaff: Staff[] = [];
     if (training.targetStaffIds && training.targetStaffIds.length > 0) {
+      // Respect explicit targetStaffIds order (which defaults to staff code/order unless reordered by admin)
       targetStaff = training.targetStaffIds
         .map((tid) => allStaff.find((s) => s.id === tid))
-        .filter((s): s is Staff => !!s)
-        .sort((a, b) => compareStaffNumber(a, b));
+        .filter((s): s is Staff => !!s);
     } else {
       targetStaff = [...allStaff].sort((a, b) => compareStaffNumber(a, b));
     }

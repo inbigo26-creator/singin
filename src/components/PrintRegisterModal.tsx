@@ -343,32 +343,21 @@ export const PrintRegisterModal: React.FC<PrintRegisterModalProps> = ({
                 </div>
               </div>
 
-              {/* School Header & Memo */}
+              {/* School Header */}
               <div className="bg-white p-3 rounded-lg border border-slate-200">
                 <label className="font-bold text-slate-700 block mb-2 flex items-center gap-1.5">
                   <Building className="w-3.5 h-3.5 text-slate-500" />
-                  <span>기관명 & 부가정보</span>
+                  <span>기관명 표시</span>
                 </label>
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.showSchoolHeader}
-                      onChange={(e) => setSettings({ ...settings, showSchoolHeader: e.target.checked })}
-                      className="rounded text-[#1a5b6d] focus:ring-[#1a5b6d] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="text-slate-700">학교명 표시</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.showMemo}
-                      onChange={(e) => setSettings({ ...settings, showMemo: e.target.checked })}
-                      className="rounded text-[#1a5b6d] focus:ring-[#1a5b6d] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="text-slate-700">비고 요약 표시</span>
-                  </label>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.showSchoolHeader}
+                    onChange={(e) => setSettings({ ...settings, showSchoolHeader: e.target.checked })}
+                    className="rounded text-[#1a5b6d] focus:ring-[#1a5b6d] w-4 h-4 cursor-pointer"
+                  />
+                  <span className="text-slate-700">학교명 표시</span>
+                </label>
               </div>
             </div>
           </div>

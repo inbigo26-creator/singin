@@ -86,8 +86,11 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
     });
   }
 
-  // Always sort ascending by teacher number (code/order)
-  displayItems.sort((a, b) => compareStaffNumber(a, b));
+  // If targetStaff is present, its order was already defined by targetStaffIds (sorted by code by default or manually adjusted by admin).
+  // Only sort by staff number if targetStaff was not explicitly defined.
+  if (targetStaff.length === 0) {
+    displayItems.sort((a, b) => compareStaffNumber(a, b));
+  }
 
   const totalCount = displayItems.length;
 
@@ -382,20 +385,6 @@ export const PrintRegisterDocument: React.FC<PrintRegisterDocumentProps> = ({
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Notes Summary Box (Optional) */}
-        {settings.showMemo && noteRows.length > 0 && (
-          <div className={`mt-3.5 border border-black p-2.5 bg-slate-50 text-xs ${contentWidthClass} mx-auto w-full`}>
-            <div className="font-bold text-black mb-1">비고 요약</div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {noteRows.map((n, idx) => (
-                <span key={n.id || idx} className="text-slate-800">
-                  <span className="font-bold text-black">{n.name}:</span> {n.note}
-                </span>
-              ))}
-            </div>
           </div>
         )}
       </div>
